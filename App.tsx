@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -49,6 +49,8 @@ function Game({ playerCount, onExit }: { playerCount: number; onExit: () => void
   const { width } = useWindowDimensions();
   const g = useGame(playerCount);
   const me = g.players[g.current];
+  const [power, setPower] = useState(0);
+  useEffect(() => setPower(0), [g.current]);
   const boardSize = Math.min(width - POWER_BAR_WIDTH, 520);
 
   return (
@@ -87,6 +89,7 @@ function Game({ playerCount, onExit }: { playerCount: number; onExit: () => void
           current={g.current}
           movingStone={g.movingStone}
           aim={g.aim}
+          power={power}
           canAim={g.phase === 'aim'}
           onAim={g.setAim}
         />
@@ -95,6 +98,7 @@ function Game({ playerCount, onExit }: { playerCount: number; onExit: () => void
           color={me.color}
           enabled={g.phase === 'aim'}
           onShoot={g.push}
+          onPowerChange={setPower}
         />
       </View>
 

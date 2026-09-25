@@ -6,13 +6,18 @@ type Props = {
   color: string;
   enabled: boolean;
   onShoot: (power: number) => void;
+  onPowerChange?: (power: number) => void;
 };
 
 // Pool-style power: drag down to pull back, let go to push.
-export function PowerBar({ height, color, enabled, onShoot }: Props) {
-  const [power, setPower] = useState(0);
-  const latest = useRef({ enabled, onShoot, height, power });
-  latest.current = { enabled, onShoot, height, power };
+export function PowerBar({ height, color, enabled, onShoot, onPowerChange }: Props) {
+  const [power, setPowerState] = useState(0);
+  const latest = useRef({ enabled, onShoot, onPowerChange, height });
+  latest.current = { enabled, onShoot, onPowerChange, height };
+  const setPower = (p: number) => {
+    setPowerState(p);
+    latest.current.onPowerChange?.(p);
+  };
 
   const responder = useMemo(
     () =>

@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react';
 import { PanResponder, View } from 'react-native';
-import Svg, { Circle, Line, Path } from 'react-native-svg';
+import Svg, { Circle, G, Line, Path, Rect } from 'react-native-svg';
 
 import { dividerEnd, outerRadius, spiralPoints, SpiralConfig } from '../game/spiral';
 import type { Player } from '../game/useGame';
@@ -12,6 +12,7 @@ type Props = {
   current: number;
   movingStone: { x: number; y: number } | null;
   aim: number;
+  power: number;
   canAim: boolean;
   onAim: (angle: number) => void;
 };
@@ -20,8 +21,12 @@ const CHALK = '#fffaf0';
 const MARGIN = 20;
 // The guide shows direction only; judging the distance is the skill.
 const GUIDE_LENGTH = 70;
+const SHOE_LENGTH = 38;
+const SHOE_WIDTH = 20;
+const SHOE_GAP = 3; // between toe and stone at rest
+const SHOE_PULL = 34; // how far back the shoe goes at full power
 
-export function Board({ cfg, size, players, current, movingStone, aim, canAim, onAim }: Props) {
+export function Board({ cfg, size, players, current, movingStone, aim, power, canAim, onAim }: Props) {
   const outer = outerRadius(cfg);
   const half = outer + MARGIN;
   const scale = size / (half * 2);
@@ -94,6 +99,22 @@ export function Board({ cfg, size, players, current, movingStone, aim, canAim, o
         )}
 
         <Circle cx={stone.x} cy={stone.y} r={cfg.stoneRadius} fill={me.color} stroke="#3b2a1a" strokeWidth={2} />
+
+        {/* the shoe, behind the stone with its toe pointing where you aim */}
+        {canAim && (
+          <G transform={`translate(${me.x} ${me.y}) rotate(${(aim * 180) / Math.PI})`}>
+            <Rect
+              x={-(cfg.stoneRadius + SHOE_GAP + power * SHOE_PULL + SHOE_LENGTH)}
+              y={-SHOE_WIDTH / 2}
+              width={SHOE_LENGTH}
+              height={SHOE_WIDTH}
+              rx={7}
+              fill="#5b3a1e"
+              stroke="#2a1a0c"
+              strokeWidth={2}
+            />
+          </G>
+        )}
       </Svg>
     </View>
   );
