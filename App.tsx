@@ -5,6 +5,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { BalanceMeter } from './src/components/BalanceMeter';
 import { Board } from './src/components/Board';
+import { PowerBar } from './src/components/PowerBar';
 import { progressFraction } from './src/game/rules';
 import { BALANCE_ENABLED, cfg, useGame } from './src/game/useGame';
 
@@ -29,6 +30,7 @@ function Menu({ onStart }: { onStart: (n: number) => void }) {
     <View style={styles.menu}>
       <Text style={styles.title}>Kasongesha{'\n'}Royale</Text>
       <Text style={styles.rules}>
+        Tap the board to aim, then pull the power bar down and let go.{'\n'}
         Push your stone along the spiral to the centre.{'\n'}
         Don't let it stop on a line.{'\n'}
         You can push over lines to take a shortcut.{'\n'}
@@ -47,6 +49,7 @@ function Game({ playerCount, onExit }: { playerCount: number; onExit: () => void
   const { width } = useWindowDimensions();
   const g = useGame(playerCount);
   const me = g.players[g.current];
+  const boardSize = Math.min(width - POWER_BAR_WIDTH, 520);
 
   return (
     <View style={styles.game}>
@@ -76,15 +79,24 @@ function Game({ playerCount, onExit }: { playerCount: number; onExit: () => void
         ))}
       </View>
 
-      <Board
-        cfg={cfg}
-        size={Math.min(width, 520)}
-        players={g.players}
-        current={g.current}
-        movingStone={g.movingStone}
-        canAim={g.phase === 'aim'}
-        onPush={g.push}
-      />
+      <View style={styles.table}>
+        <Board
+          cfg={cfg}
+          size={boardSize}
+          players={g.players}
+          current={g.current}
+          movingStone={g.movingStone}
+          aim={g.aim}
+          canAim={g.phase === 'aim'}
+          onAim={g.setAim}
+        />
+        <PowerBar
+          height={boardSize * 0.7}
+          color={me.color}
+          enabled={g.phase === 'aim'}
+          onShoot={g.push}
+        />
+      </View>
 
       <Text style={styles.message}>{g.message}</Text>
 
@@ -100,6 +112,7 @@ function Game({ playerCount, onExit }: { playerCount: number; onExit: () => void
 }
 
 const INK = '#3b2a1a';
+const POWER_BAR_WIDTH = 56;
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#c9a46c' },
@@ -116,6 +129,7 @@ const styles = StyleSheet.create({
   },
   buttonText: { color: '#fffaf0', fontSize: 18, fontWeight: '700' },
   game: { flex: 1, alignItems: 'center', gap: 8 },
+  table: { flexDirection: 'row', alignItems: 'center' },
   header: {
     width: '100%',
     flexDirection: 'row',

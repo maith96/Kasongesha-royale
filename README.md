@@ -22,15 +22,16 @@ npm test            # rule/geometry tests
 npm run typecheck
 ```
 
-Swipe in the direction you want to push; the dashed line shows how far the
-stone will slide. 1–4 players, pass-and-play on one phone.
+Controls are pool-style: tap or drag on the board to aim (the dashed line
+shows direction only), then pull the power bar down and let go to push. How
+far the stone slides is up to your judgement. 1–4 players, pass-and-play on one phone.
 
 ## Code
 
 - `src/game/spiral.ts` – spiral geometry: which ring/half a point is in, distance to lines.
 - `src/game/rules.ts` – judging a push (line touch, out, shortcut, win).
 - `src/game/useGame.ts` – game loop, sliding physics, balance wobble, turns.
-- `src/components/` – the board (SVG) and balance meter.
+- `src/components/` – the board (SVG), power bar and balance meter.
 
 ## Building
 

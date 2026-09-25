@@ -1,9 +1,9 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef } from 'react';
 import { PanResponder, View } from 'react-native';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 
 import { dividerEnd, outerRadius, spiralPoints, SpiralConfig } from '../game/spiral';
-import { slideDistance, type Player } from '../game/useGame';
+import type { Player } from '../game/useGame';
 
 type Props = {
   cfg: SpiralConfig;
@@ -11,53 +11,60 @@ type Props = {
   players: Player[];
   current: number;
   movingStone: { x: number; y: number } | null;
+  aim: number;
   canAim: boolean;
-  onPush: (dx: number, dy: number) => void;
+  onAim: (angle: number) => void;
 };
 
 const CHALK = '#fffaf0';
 const MARGIN = 20;
+// The guide shows direction only; judging the distance is the skill.
+const GUIDE_LENGTH = 70;
 
-export function Board({ cfg, size, players, current, movingStone, canAim, onPush }: Props) {
+export function Board({ cfg, size, players, current, movingStone, aim, canAim, onAim }: Props) {
   const outer = outerRadius(cfg);
   const half = outer + MARGIN;
   const scale = size / (half * 2);
-  const [aim, setAim] = useState<{ dx: number; dy: number } | null>(null);
+  const view = useRef<View>(null);
+  const origin = useRef({ x: 0, y: 0 });
 
   const spiralPath = useMemo(() => {
     const pts = spiralPoints(cfg);
     return pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
   }, [cfg]);
 
-  // Keep the latest props reachable from the PanResponder created once.
-  const latest = useRef({ canAim, onPush, scale });
-  latest.current = { canAim, onPush, scale };
-
-  const responder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => latest.current.canAim,
-        onMoveShouldSetPanResponder: () => latest.current.canAim,
-        onPanResponderMove: (_, g) => {
-          const s = latest.current.scale;
-          setAim({ dx: g.dx / s, dy: g.dy / s });
-        },
-        onPanResponderRelease: (_, g) => {
-          const s = latest.current.scale;
-          setAim(null);
-          if (latest.current.canAim) latest.current.onPush(g.dx / s, g.dy / s);
-        },
-        onPanResponderTerminate: () => setAim(null),
-      }),
-    [],
-  );
-
   const me = players[current];
-  const aimLen = aim ? slideDistance(Math.hypot(aim.dx, aim.dy)) : 0;
-  const aimAngle = aim ? Math.atan2(aim.dy, aim.dx) : 0;
+
+  // Keep the latest props reachable from the PanResponder created once.
+  const latest = useRef({ canAim, onAim, scale, half, me });
+  latest.current = { canAim, onAim, scale, half, me };
+
+  const responder = useMemo(() => {
+    // Point the aim from the stone towards the finger.
+    const aimAt = (pageX: number, pageY: number) => {
+      const { scale, half, me, onAim } = latest.current;
+      const wx = (pageX - origin.current.x) / scale - half;
+      const wy = (pageY - origin.current.y) / scale - half;
+      if (Math.hypot(wx - me.x, wy - me.y) > 1) onAim(Math.atan2(wy - me.y, wx - me.x));
+    };
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => latest.current.canAim,
+      onMoveShouldSetPanResponder: () => latest.current.canAim,
+      onPanResponderGrant: (e) => {
+        const { pageX, pageY } = e.nativeEvent;
+        view.current?.measureInWindow((x, y) => {
+          origin.current = { x, y };
+          aimAt(pageX, pageY);
+        });
+      },
+      onPanResponderMove: (e) => aimAt(e.nativeEvent.pageX, e.nativeEvent.pageY),
+    });
+  }, []);
+
+  const stone = movingStone ?? me;
 
   return (
-    <View style={{ width: size, height: size }} {...responder.panHandlers}>
+    <View ref={view} style={{ width: size, height: size }} {...responder.panHandlers}>
       <Svg width={size} height={size} viewBox={`${-half} ${-half} ${half * 2} ${half * 2}`}>
         {/* home */}
         <Circle r={cfg.centreRadius - 4} fill="#f4d58d" opacity={0.6} />
@@ -73,26 +80,20 @@ export function Board({ cfg, size, players, current, movingStone, canAim, onPush
           ),
         )}
 
-        {aim && (
+        {canAim && (
           <Line
-            x1={me.x}
-            y1={me.y}
-            x2={me.x + Math.cos(aimAngle) * aimLen}
-            y2={me.y + Math.sin(aimAngle) * aimLen}
+            x1={me.x + Math.cos(aim) * (cfg.stoneRadius + 4)}
+            y1={me.y + Math.sin(aim) * (cfg.stoneRadius + 4)}
+            x2={me.x + Math.cos(aim) * GUIDE_LENGTH}
+            y2={me.y + Math.sin(aim) * GUIDE_LENGTH}
             stroke={me.color}
             strokeWidth={3}
-            strokeDasharray="8 6"
+            strokeDasharray="6 5"
+            strokeLinecap="round"
           />
         )}
 
-        <Circle
-          cx={movingStone?.x ?? me.x}
-          cy={movingStone?.y ?? me.y}
-          r={cfg.stoneRadius}
-          fill={me.color}
-          stroke="#3b2a1a"
-          strokeWidth={2}
-        />
+        <Circle cx={stone.x} cy={stone.y} r={cfg.stoneRadius} fill={me.color} stroke="#3b2a1a" strokeWidth={2} />
       </Svg>
     </View>
   );

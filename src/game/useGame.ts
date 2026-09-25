@@ -7,8 +7,7 @@ import { DEFAULT_SPIRAL, outerRadius, startPosition } from './spiral';
 export const cfg = DEFAULT_SPIRAL;
 
 const FRICTION = 520; // world units / s²
-const SWIPE_GAIN = 2.2; // swipe length (world units) → speed
-const MAX_SPEED = 760;
+const MAX_SPEED = 760; // speed at full power
 // Balance meter (hopping on one leg) is switched off until it plays well.
 export const BALANCE_ENABLED = false;
 const WOBBLE_ANGLE = 0.35; // radians of aim error at full wobble
@@ -26,10 +25,11 @@ const FAIL_TEXT: Record<Extract<Verdict, { ok: false }>['reason'], string> = {
   'foot-down': 'Mguu chini! You lost balance. Back to start.',
 };
 
-// How far a push slides before friction stops it, ignoring wobble.
-export function slideDistance(swipeLength: number): number {
-  const v = Math.min(swipeLength * SWIPE_GAIN, MAX_SPEED);
-  return (v * v) / (2 * FRICTION);
+const INTRO = 'Tap the board to aim, then pull the power bar down and let go.';
+
+// Default aim: straight ahead along the track (the spiral runs clockwise).
+function trackDirection(p: { x: number; y: number }): number {
+  return Math.atan2(p.y, p.x) + Math.PI / 2;
 }
 
 function makePlayers(count: number): Player[] {
@@ -46,7 +46,8 @@ export function useGame(playerCount: number) {
   const players = useRef<Player[]>(makePlayers(playerCount));
   const current = useRef(0);
   const phase = useRef<Phase>('aim');
-  const message = useRef('Swipe to push your stone. Don\'t let it stop on a line!');
+  const message = useRef(INTRO);
+  const aim = useRef(trackDirection(players.current[0]));
   const wobble = useRef(0);
   const wobbleSpeed = useRef(2.2);
   const stone = useRef({ x: 0, y: 0, vx: 0, vy: 0 });
@@ -58,6 +59,7 @@ export function useGame(playerCount: number) {
     current.current = (current.current + 1) % players.current.length;
     wobbleSpeed.current = 1.8 + Math.random() * 1.6;
     phase.current = 'aim';
+    aim.current = trackDirection(players.current[current.current]);
     message.current = `${players.current[current.current].name}, your turn.`;
     setTick((t) => t + 1);
   }, []);
@@ -138,12 +140,16 @@ export function useGame(playerCount: number) {
     };
   }, [finishPush]);
 
-  // dx, dy: swipe vector in world units.
+  const setAim = useCallback((angle: number) => {
+    if (phase.current !== 'aim') return;
+    aim.current = angle;
+    setTick((t) => t + 1);
+  }, []);
+
+  // power: 0..1 from the power bar. The stone goes in the aimed direction.
   const push = useCallback(
-    (dx: number, dy: number) => {
-      if (phase.current !== 'aim') return;
-      const len = Math.hypot(dx, dy);
-      if (len < 6) return;
+    (power: number) => {
+      if (phase.current !== 'aim' || power <= 0) return;
       const p = players.current[current.current];
       const w = BALANCE_ENABLED ? wobble.current : 0;
       if (Math.abs(w) > FOOT_DOWN) {
@@ -151,8 +157,8 @@ export function useGame(playerCount: number) {
         finishPush({ ok: false, reason: 'foot-down' });
         return;
       }
-      const angle = Math.atan2(dy, dx) + w * WOBBLE_ANGLE;
-      const speed = Math.min(len * SWIPE_GAIN, MAX_SPEED) * (1 - 0.15 * Math.abs(w));
+      const angle = aim.current + w * WOBBLE_ANGLE;
+      const speed = Math.min(power, 1) * MAX_SPEED * (1 - 0.15 * Math.abs(w));
       stone.current = { x: p.x, y: p.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed };
       pushFrom.current = { x: p.x, y: p.y };
       tracker.current = new PushTracker(cfg, p.x, p.y);
@@ -168,7 +174,8 @@ export function useGame(playerCount: number) {
     players.current = makePlayers(playerCount);
     current.current = 0;
     phase.current = 'aim';
-    message.current = 'Swipe to push your stone. Don\'t let it stop on a line!';
+    aim.current = trackDirection(players.current[0]);
+    message.current = INTRO;
     setTick((t) => t + 1);
   }, [playerCount]);
 
@@ -180,6 +187,8 @@ export function useGame(playerCount: number) {
     wobble: wobble.current,
     footDownAt: FOOT_DOWN,
     movingStone: phase.current === 'moving' ? stone.current : null,
+    aim: aim.current,
+    setAim,
     push,
     restart,
   };
