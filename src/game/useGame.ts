@@ -2,9 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 
 import { judgePush, PushTracker, Verdict } from './rules';
-import { DEFAULT_SPIRAL, outerRadius, startPosition } from './spiral';
+import { outerRadius, SpiralConfig, startPosition } from './spiral';
 
-export const cfg = DEFAULT_SPIRAL;
 
 const FRICTION = 520; // world units / s²
 const MAX_SPEED = 760; // speed at full power
@@ -34,7 +33,7 @@ function trackDirection(p: { x: number; y: number }): number {
   return Math.atan2(p.y, p.x) + Math.PI / 2;
 }
 
-function makePlayers(count: number): Player[] {
+function makePlayers(cfg: SpiralConfig, count: number): Player[] {
   const s = startPosition(cfg);
   return Array.from({ length: count }, (_, i) => ({
     name: `Player ${i + 1}`,
@@ -43,9 +42,10 @@ function makePlayers(count: number): Player[] {
   }));
 }
 
-export function useGame(playerCount: number) {
+// The hook is remounted per stage (see App), so `cfg` is fixed for its lifetime.
+export function useGame(playerCount: number, cfg: SpiralConfig) {
   const [, setTick] = useState(0);
-  const players = useRef<Player[]>(makePlayers(playerCount));
+  const players = useRef<Player[]>(makePlayers(cfg, playerCount));
   const current = useRef(0);
   const phase = useRef<Phase>('aim');
   const message = useRef(INTRO);
@@ -94,7 +94,7 @@ export function useGame(playerCount: number) {
       setTick((t) => t + 1);
       resultTimer.current = setTimeout(nextTurn, RESULT_PAUSE_MS);
     },
-    [nextTurn],
+    [nextTurn, cfg],
   );
 
   // Game loop: wobble the balance meter while aiming, slide the stone while moving.
@@ -128,7 +128,7 @@ export function useGame(playerCount: number) {
           s.y += s.vy * h;
           tracker.current?.step(s.x, s.y);
         }
-        const flewOff = Math.hypot(s.x, s.y) > outerRadius(cfg) * 1.5;
+        const flewOff = Math.hypot(s.x, s.y) > outerRadius(cfg) * 3;
         if (flewOff || (s.vx === 0 && s.vy === 0)) {
           finishPush(
             flewOff
@@ -145,7 +145,7 @@ export function useGame(playerCount: number) {
       cancelAnimationFrame(raf);
       if (resultTimer.current) clearTimeout(resultTimer.current);
     };
-  }, [finishPush]);
+  }, [finishPush, cfg]);
 
   const setAim = useCallback((angle: number) => {
     if (phase.current !== 'aim') return;
@@ -174,19 +174,19 @@ export function useGame(playerCount: number) {
       tone.current = 'info';
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     },
-    [finishPush],
+    [finishPush, cfg],
   );
 
   const restart = useCallback(() => {
     if (resultTimer.current) clearTimeout(resultTimer.current);
-    players.current = makePlayers(playerCount);
+    players.current = makePlayers(cfg, playerCount);
     current.current = 0;
     phase.current = 'aim';
     aim.current = trackDirection(players.current[0]);
     message.current = INTRO;
     tone.current = 'info';
     setTick((t) => t + 1);
-  }, [playerCount]);
+  }, [playerCount, cfg]);
 
   return {
     players: players.current,

@@ -1,9 +1,16 @@
-// Geometry of the Kasongesha board: an Archimedean spiral drawn inwards,
-// plus a straight divider line that splits it into a top and bottom half.
+// Geometry of the Kasongesha board: a spiral drawn inwards, plus a straight
+// divider line that splits it into a top and bottom half.
+//
+// The spiral can be round or follow a regular polygon (square, triangle, …).
+// Every shape is described by a "shape factor" P(φ): how far the outline is
+// from the centre at angle φ relative to its inradius. A circle has P = 1;
+// a polygon has P = 1 in the middle of each side and grows towards corners.
+// Actual radius = normalised radius × P(φ), so the ring/progress maths is the
+// same for every shape once a point's radius is divided by P(φ).
 //
 // World coordinates are centred on the spiral's centre, with y pointing down
 // (same as SVG). The spiral line starts at angle 0 (on the divider, right side)
-// at the outer radius and winds clockwise inwards for `rings` full turns.
+// at the outer edge and winds clockwise inwards for `rings` full turns.
 //
 // The track is the corridor between two consecutive turns of the line.
 // "Ring k" at a given angle is the k-th corridor counting from the outside
@@ -13,9 +20,11 @@ const TAU = Math.PI * 2;
 
 export type SpiralConfig = {
   rings: number; // full turns of the spiral line
-  pitch: number; // track width (gap between consecutive turns)
-  centreRadius: number; // radius where the spiral line ends
+  pitch: number; // track width in the middle of a side (gap between turns)
+  centreRadius: number; // where the spiral line ends (normalised)
   stoneRadius: number;
+  sides: number; // 0 for a round spiral, else polygon sides
+  rotation: number; // angle of one polygon corner
 };
 
 export const DEFAULT_SPIRAL: SpiralConfig = {
@@ -23,6 +32,8 @@ export const DEFAULT_SPIRAL: SpiralConfig = {
   pitch: 58,
   centreRadius: 42,
   stoneRadius: 12,
+  sides: 0,
+  rotation: 0,
 };
 
 export type Half = 'top' | 'bottom';
@@ -36,6 +47,20 @@ export type Location = {
   progress: number; // distance along the track in radians of turn
 };
 
+type Point = { x: number; y: number };
+
+function normAngle(a: number): number {
+  const m = a % TAU;
+  return m < 0 ? m + TAU : m;
+}
+
+export function shapeFactor(cfg: SpiralConfig, phi: number): number {
+  if (cfg.sides < 3) return 1;
+  const seg = TAU / cfg.sides;
+  const a = normAngle(phi - cfg.rotation) % seg;
+  return 1 / Math.cos(a - seg / 2);
+}
+
 export function outerRadius(cfg: SpiralConfig): number {
   return cfg.centreRadius + cfg.pitch * cfg.rings;
 }
@@ -44,25 +69,36 @@ export function maxTheta(cfg: SpiralConfig): number {
   return TAU * cfg.rings;
 }
 
-export function lineRadius(cfg: SpiralConfig, theta: number): number {
+function normalisedLine(cfg: SpiralConfig, theta: number): number {
   return outerRadius(cfg) - (cfg.pitch * theta) / TAU;
 }
 
-function normAngle(a: number): number {
-  const m = a % TAU;
-  return m < 0 ? m + TAU : m;
+// Actual distance from the centre to the spiral line at turn angle θ.
+export function lineRadius(cfg: SpiralConfig, theta: number): number {
+  return normalisedLine(cfg, theta) * shapeFactor(cfg, theta);
+}
+
+function polar(r: number, phi: number): Point {
+  return { x: r * Math.cos(phi), y: r * Math.sin(phi) };
+}
+
+// Middle of ring `ring` at angle `phi`.
+export function trackPoint(cfg: SpiralConfig, ring: number, phi: number): Point {
+  const rn = normalisedLine(cfg, phi + TAU * ring) - cfg.pitch / 2;
+  return polar(rn * shapeFactor(cfg, phi), phi);
 }
 
 export function locate(cfg: SpiralConfig, x: number, y: number): Location {
   const r = Math.hypot(x, y);
   const phi = normAngle(Math.atan2(y, x));
   const half: Half = y < 0 ? 'top' : 'bottom';
+  const rn = r / shapeFactor(cfg, phi);
 
-  if (r <= cfg.centreRadius - cfg.stoneRadius) {
+  if (rn <= cfg.centreRadius - cfg.stoneRadius) {
     return { r, phi, half, kind: 'home', ring: cfg.rings, progress: maxTheta(cfg) };
   }
 
-  const ring = Math.floor((outerRadius(cfg) - r) / cfg.pitch - phi / TAU);
+  const ring = Math.floor((outerRadius(cfg) - rn) / cfg.pitch - phi / TAU);
   if (ring < 0) {
     return { r, phi, half, kind: 'outside', ring: -1, progress: -1 };
   }
@@ -72,37 +108,70 @@ export function locate(cfg: SpiralConfig, x: number, y: number): Location {
   return { r, phi, half, kind: 'track', ring: clamped, progress };
 }
 
-// Perpendicular distance from a point to the spiral line (not the divider).
-export function distanceToSpiral(cfg: SpiralConfig, x: number, y: number): number {
-  const r = Math.hypot(x, y);
-  const phi = normAngle(Math.atan2(y, x));
-  const b = cfg.pitch / TAU; // dr/dθ
-  const slope = r / Math.hypot(r, b); // radial → perpendicular correction
-  let best = Infinity;
-  for (let j = 0; j <= cfg.rings; j++) {
-    const theta = phi + TAU * j;
-    if (theta > maxTheta(cfg)) break;
-    best = Math.min(best, Math.abs(r - lineRadius(cfg, theta)) * slope);
+// Turn angles to sample: an even step plus every polygon corner, so the
+// drawn line (and the touch test against it) keeps its corners sharp.
+function sampleAngles(cfg: SpiralConfig, end: number, step: number): number[] {
+  const ts: number[] = [];
+  for (let t = 0; t < end; t += step) ts.push(t);
+  if (cfg.sides >= 3) {
+    const seg = TAU / cfg.sides;
+    for (let c = normAngle(cfg.rotation) % seg; c < end; c += seg) ts.push(c);
   }
-  // The two loose ends of the line.
-  const outer = outerRadius(cfg);
-  best = Math.min(best, Math.hypot(x - outer, y), Math.hypot(x - cfg.centreRadius, y));
+  ts.push(end);
+  return ts.sort((a, b) => a - b);
+}
+
+const pointCache = new WeakMap<SpiralConfig, Point[]>();
+
+// Points along the spiral line, for drawing and touch tests.
+export function spiralPoints(cfg: SpiralConfig): Point[] {
+  let pts = pointCache.get(cfg);
+  if (!pts) {
+    pts = sampleAngles(cfg, maxTheta(cfg), 0.03).map((t) => polar(lineRadius(cfg, t), t));
+    pointCache.set(cfg, pts);
+  }
+  return pts;
+}
+
+// Closed outline of the shape at normalised radius `rn` (for the home zone).
+export function outlinePoints(cfg: SpiralConfig, rn: number): Point[] {
+  return sampleAngles(cfg, TAU, 0.1).map((t) => polar(rn * shapeFactor(cfg, t), t));
+}
+
+function segmentDistance(p: Point, a: Point, b: Point): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy;
+  const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2));
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+
+// Distance from a point to the spiral line (not the divider).
+export function distanceToSpiral(cfg: SpiralConfig, x: number, y: number): number {
+  const pts = spiralPoints(cfg);
+  const p = { x, y };
+  let best = Infinity;
+  for (let i = 1; i < pts.length; i++) best = Math.min(best, segmentDistance(p, pts[i - 1], pts[i]));
   return best;
 }
 
-// The divider runs across the spiral on y = 0 but stops at the centre circle,
-// so the home zone is one clean space. On the left it ends at the outermost
-// line; on the right it closes the entrance.
+// The divider runs across the spiral on y = 0 but stops at the home zone.
+// On the left it ends at the outermost line; on the right it closes the entrance.
 export function dividerEnd(cfg: SpiralConfig, side: 'left' | 'right'): number {
-  return side === 'right' ? outerRadius(cfg) : lineRadius(cfg, Math.PI);
+  return side === 'right' ? lineRadius(cfg, 0) : lineRadius(cfg, Math.PI);
+}
+
+export function dividerStart(cfg: SpiralConfig, side: 'left' | 'right'): number {
+  return cfg.centreRadius * shapeFactor(cfg, side === 'right' ? 0 : Math.PI);
 }
 
 export function distanceToDivider(cfg: SpiralConfig, x: number, y: number): number {
-  const outer = dividerEnd(cfg, x < 0 ? 'left' : 'right');
+  const side = x < 0 ? 'left' : 'right';
+  const inner = dividerStart(cfg, side);
+  const outer = dividerEnd(cfg, side);
   const ax = Math.abs(x);
-  if (ax >= cfg.centreRadius && ax <= outer) return Math.abs(y);
-  const nearestX = ax < cfg.centreRadius ? cfg.centreRadius : outer;
-  return Math.hypot(ax - nearestX, y);
+  if (ax >= inner && ax <= outer) return Math.abs(y);
+  return Math.hypot(ax - (ax < inner ? inner : outer), y);
 }
 
 export function touchesLine(cfg: SpiralConfig, x: number, y: number): boolean {
@@ -112,22 +181,8 @@ export function touchesLine(cfg: SpiralConfig, x: number, y: number): boolean {
   );
 }
 
-export function startPosition(cfg: SpiralConfig): { x: number; y: number } {
-  const phi = 0.45;
-  const r = lineRadius(cfg, phi) - cfg.pitch / 2;
-  return { x: r * Math.cos(phi), y: r * Math.sin(phi) };
-}
-
-// Points along the spiral line, for drawing.
-export function spiralPoints(cfg: SpiralConfig, step = 0.05): { x: number; y: number }[] {
-  const pts: { x: number; y: number }[] = [];
-  const end = maxTheta(cfg);
-  for (let t = 0; t < end; t += step) {
-    const r = lineRadius(cfg, t);
-    pts.push({ x: r * Math.cos(t), y: r * Math.sin(t) });
-  }
-  pts.push({ x: cfg.centreRadius, y: 0 });
-  return pts;
+export function startPosition(cfg: SpiralConfig): Point {
+  return trackPoint(cfg, 0, 0.45);
 }
 
 // Tight box around everything drawn in chalk, for framing the board.

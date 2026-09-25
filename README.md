@@ -13,6 +13,14 @@ leg and push your stone along a chalk spiral to the centre.
   (Currently switched off via `BALANCE_ENABLED` in `src/game/useGame.ts`.)
 - Any mistake sends your stone back to the start. First to the centre wins.
 
+## Stages
+
+1. **Circle** – the classic round spiral.
+2. **Square** – a square spiral with sharp corners.
+3. **Triangle** – a triangular spiral; wide corners, fewer rings.
+
+Pick a stage in the menu; after a win, **Next stage** moves on.
+
 ## Playing
 
 ```bash
@@ -28,7 +36,8 @@ far the stone slides is up to your judgement. 1–4 players, pass-and-play on on
 
 ## Code
 
-- `src/game/spiral.ts` – spiral geometry: which ring/half a point is in, distance to lines.
+- `src/game/spiral.ts` – spiral geometry for any shape (circle or polygon): which ring/half a point is in, distance to lines.
+- `src/game/stages.ts` – the stage list (shape, rings, rotation).
 - `src/game/rules.ts` – judging a push (line touch, out, shortcut, win).
 - `src/game/useGame.ts` – game loop, sliding physics, balance wobble, turns.
 - `src/components/` – the board (SVG), power bar and balance meter.

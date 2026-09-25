@@ -8,10 +8,12 @@ import { BalanceMeter } from './src/components/BalanceMeter';
 import { Board } from './src/components/Board';
 import { PowerBar } from './src/components/PowerBar';
 import { progressFraction } from './src/game/rules';
-import { BALANCE_ENABLED, cfg, useGame } from './src/game/useGame';
+import { STAGES } from './src/game/stages';
+import { BALANCE_ENABLED, useGame } from './src/game/useGame';
 
 export default function App() {
   const [players, setPlayers] = useState<number | null>(null);
+  const [stage, setStage] = useState(0);
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.screen}>
@@ -19,16 +21,25 @@ export default function App() {
         <StatusBar style="light" hidden />
         <NavigationBar hidden />
         {players === null ? (
-          <Menu onStart={setPlayers} />
+          <Menu stage={stage} onStage={setStage} onStart={setPlayers} />
         ) : (
-          <Game playerCount={players} onExit={() => setPlayers(null)} />
+          // Keyed so a new stage or player count starts a fresh game.
+          <Game
+            key={`${stage}-${players}`}
+            stage={stage}
+            playerCount={players}
+            onNextStage={() => setStage((s) => (s + 1) % STAGES.length)}
+            onExit={() => setPlayers(null)}
+          />
         )}
       </SafeAreaView>
     </SafeAreaProvider>
   );
 }
 
-function Menu({ onStart }: { onStart: (n: number) => void }) {
+type MenuProps = { stage: number; onStage: (s: number) => void; onStart: (n: number) => void };
+
+function Menu({ stage, onStage, onStart }: MenuProps) {
   return (
     <View style={styles.menu}>
       <View style={styles.menuLeft}>
@@ -41,6 +52,14 @@ function Menu({ onStart }: { onStart: (n: number) => void }) {
         </View>
       </View>
       <View style={styles.menuRight}>
+        <View style={styles.stages}>
+          {STAGES.map((s, i) => (
+            <Pressable key={s.name} style={[styles.stage, i === stage && styles.stageActive]} onPress={() => onStage(i)}>
+              <Text style={[styles.stageIcon, i === stage && styles.stageTextActive]}>{s.icon}</Text>
+              <Text style={[styles.stageName, i === stage && styles.stageTextActive]}>{s.name}</Text>
+            </Pressable>
+          ))}
+        </View>
         {[1, 2, 3, 4].map((n) => (
           <Pressable key={n} style={styles.button} onPress={() => onStart(n)}>
             <Text style={styles.buttonText}>{n === 1 ? 'Practice' : `${n} players`}</Text>
@@ -51,9 +70,12 @@ function Menu({ onStart }: { onStart: (n: number) => void }) {
   );
 }
 
-function Game({ playerCount, onExit }: { playerCount: number; onExit: () => void }) {
+type GameProps = { stage: number; playerCount: number; onNextStage: () => void; onExit: () => void };
+
+function Game({ stage, playerCount, onNextStage, onExit }: GameProps) {
   const [area, setArea] = useState({ width: 0, height: 0 });
-  const g = useGame(playerCount);
+  const { cfg, name, icon } = STAGES[stage];
+  const g = useGame(playerCount, cfg);
   const me = g.players[g.current];
   const [power, setPower] = useState(0);
   useEffect(() => setPower(0), [g.current]);
@@ -70,6 +92,10 @@ function Game({ playerCount, onExit }: { playerCount: number; onExit: () => void
             <Text style={styles.link}>↻</Text>
           </Pressable>
         </View>
+
+        <Text style={styles.stageLabel}>
+          {icon}  Stage {stage + 1} · {name}
+        </Text>
 
         <View style={styles.chips}>
           {g.players.map((p, i) => (
@@ -92,9 +118,14 @@ function Game({ playerCount, onExit }: { playerCount: number; onExit: () => void
         </View>
 
         {g.phase === 'won' && (
-          <Pressable style={[styles.button, styles.smallButton]} onPress={g.restart}>
-            <Text style={styles.buttonText}>Play again</Text>
-          </Pressable>
+          <>
+            <Pressable style={[styles.button, styles.smallButton]} onPress={onNextStage}>
+              <Text style={styles.buttonText}>{stage + 1 < STAGES.length ? 'Next stage ▶' : 'Back to stage 1'}</Text>
+            </Pressable>
+            <Pressable style={[styles.button, styles.smallButton, styles.ghostButton]} onPress={g.restart}>
+              <Text style={[styles.buttonText, styles.ghostText]}>Play again</Text>
+            </Pressable>
+          </>
         )}
         {BALANCE_ENABLED && <BalanceMeter wobble={g.phase === 'aim' ? g.wobble : 0} footDownAt={g.footDownAt} />}
       </View>
@@ -156,7 +187,23 @@ const styles = StyleSheet.create({
     minWidth: 200,
     alignItems: 'center',
   },
-  smallButton: { minWidth: 0, paddingHorizontal: 16 },
+  smallButton: { minWidth: 0, paddingHorizontal: 12, paddingVertical: 10 },
+  ghostButton: { backgroundColor: 'transparent', borderWidth: 2, borderColor: CHALK },
+  ghostText: { color: CHALK },
+  stages: { flexDirection: 'row', gap: 8, marginBottom: 4 },
+  stage: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#fdf6e355',
+  },
+  stageActive: { borderColor: CHALK, backgroundColor: '#00000033' },
+  stageIcon: { color: CHALK, fontSize: 20, opacity: 0.6 },
+  stageName: { color: CHALK, fontSize: 12, fontWeight: '700', opacity: 0.6 },
+  stageTextActive: { opacity: 1 },
+  stageLabel: { color: CHALK, fontSize: 14, fontWeight: '800' },
   buttonText: { color: INK, fontSize: 18, fontWeight: '800' },
   game: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   side: { width: SIDE_PANEL, alignSelf: 'stretch', paddingHorizontal: 12, paddingVertical: 8, gap: 10 },
