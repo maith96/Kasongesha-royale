@@ -4,10 +4,10 @@ const TAU = Math.PI * 2;
 
 export type Verdict =
   | { ok: true; win: boolean; shortcut: boolean }
-  | { ok: false; reason: 'line' | 'outside' | 'wrong-track' | 'foot-down' };
+  | { ok: false; reason: 'line' | 'outside' | 'foot-down' };
 
 // Tracks a single push while the stone slides, so we know whether it jumped
-// over any spiral line on the way (a shortcut attempt).
+// over any spiral line on the way (a shortcut, worth celebrating).
 export class PushTracker {
   private lastProgress: number;
   crossedLine = false;
@@ -34,18 +34,11 @@ export function judgePush(
   const start = locate(cfg, from.x, from.y);
   const end = locate(cfg, to.x, to.y);
 
+  // The stone may slide over lines; only where it stops counts.
   if (touchesLine(cfg, to.x, to.y)) return { ok: false, reason: 'line' };
   if (end.kind === 'outside') return { ok: false, reason: 'outside' };
-  if (end.kind === 'home') return { ok: true, win: true, shortcut: crossedLine };
-
-  if (crossedLine) {
-    // Shortcut across the middle: must land on the other half, same ring.
-    const sameRing = end.ring === start.ring;
-    const otherHalf = end.half !== start.half;
-    if (!sameRing || !otherHalf) return { ok: false, reason: 'wrong-track' };
-    return { ok: true, win: false, shortcut: true };
-  }
-  return { ok: true, win: false, shortcut: false };
+  const shortcut = crossedLine && end.progress > start.progress;
+  return { ok: true, win: end.kind === 'home', shortcut };
 }
 
 export function progressFraction(cfg: SpiralConfig, x: number, y: number): number {

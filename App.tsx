@@ -6,7 +6,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { BalanceMeter } from './src/components/BalanceMeter';
 import { Board } from './src/components/Board';
 import { progressFraction } from './src/game/rules';
-import { cfg, useGame } from './src/game/useGame';
+import { BALANCE_ENABLED, cfg, useGame } from './src/game/useGame';
 
 export default function App() {
   const [players, setPlayers] = useState<number | null>(null);
@@ -31,7 +31,7 @@ function Menu({ onStart }: { onStart: (n: number) => void }) {
       <Text style={styles.rules}>
         Push your stone along the spiral to the centre.{'\n'}
         Don't let it stop on a line.{'\n'}
-        Cut across the middle to the same ring on the other side for a shortcut.{'\n'}
+        You can push over lines to take a shortcut.{'\n'}
         Any mistake: back to start!
       </Text>
       {[1, 2, 3, 4].map((n) => (
@@ -93,7 +93,7 @@ function Game({ playerCount, onExit }: { playerCount: number; onExit: () => void
           <Text style={styles.buttonText}>Play again</Text>
         </Pressable>
       ) : (
-        <BalanceMeter wobble={g.phase === 'aim' ? g.wobble : 0} footDownAt={g.footDownAt} />
+        BALANCE_ENABLED && <BalanceMeter wobble={g.phase === 'aim' ? g.wobble : 0} footDownAt={g.footDownAt} />
       )}
     </View>
   );

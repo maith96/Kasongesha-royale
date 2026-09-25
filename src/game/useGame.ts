@@ -9,6 +9,8 @@ export const cfg = DEFAULT_SPIRAL;
 const FRICTION = 520; // world units / s²
 const SWIPE_GAIN = 2.2; // swipe length (world units) → speed
 const MAX_SPEED = 760;
+// Balance meter (hopping on one leg) is switched off until it plays well.
+export const BALANCE_ENABLED = false;
 const WOBBLE_ANGLE = 0.35; // radians of aim error at full wobble
 const FOOT_DOWN = 0.9; // wobble beyond this means you lost balance
 const RESULT_PAUSE_MS = 1400;
@@ -21,7 +23,6 @@ const COLORS = ['#c0392b', '#1f6fb2', '#27864a', '#8e44ad'];
 const FAIL_TEXT: Record<Extract<Verdict, { ok: false }>['reason'], string> = {
   line: 'Umeguza line! Back to start.',
   outside: 'Umetoka nje! Back to start.',
-  'wrong-track': 'Wrong track! Back to start.',
   'foot-down': 'Mguu chini! You lost balance. Back to start.',
 };
 
@@ -45,7 +46,7 @@ export function useGame(playerCount: number) {
   const players = useRef<Player[]>(makePlayers(playerCount));
   const current = useRef(0);
   const phase = useRef<Phase>('aim');
-  const message = useRef('Swipe from the stone to push it. Watch your balance!');
+  const message = useRef('Swipe to push your stone. Don\'t let it stop on a line!');
   const wobble = useRef(0);
   const wobbleSpeed = useRef(2.2);
   const stone = useRef({ x: 0, y: 0, vx: 0, vy: 0 });
@@ -97,7 +98,7 @@ export function useGame(playerCount: number) {
       last = now;
       clock += dt;
 
-      if (phase.current === 'aim') {
+      if (phase.current === 'aim' && BALANCE_ENABLED) {
         const w = wobbleSpeed.current;
         wobble.current = 0.75 * Math.sin(clock * w) + 0.25 * Math.sin(clock * w * 2.7 + 1);
         setTick((t) => t + 1);
@@ -144,7 +145,7 @@ export function useGame(playerCount: number) {
       const len = Math.hypot(dx, dy);
       if (len < 6) return;
       const p = players.current[current.current];
-      const w = wobble.current;
+      const w = BALANCE_ENABLED ? wobble.current : 0;
       if (Math.abs(w) > FOOT_DOWN) {
         stone.current = { x: p.x, y: p.y, vx: 0, vy: 0 };
         finishPush({ ok: false, reason: 'foot-down' });
@@ -167,7 +168,7 @@ export function useGame(playerCount: number) {
     players.current = makePlayers(playerCount);
     current.current = 0;
     phase.current = 'aim';
-    message.current = 'Swipe from the stone to push it. Watch your balance!';
+    message.current = 'Swipe to push your stone. Don\'t let it stop on a line!';
     setTick((t) => t + 1);
   }, [playerCount]);
 

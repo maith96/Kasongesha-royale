@@ -71,16 +71,25 @@ test('shortcut across the middle to the same ring on the other half is valid', (
   assert.deepEqual(judgePush(cfg, a, b, crossed), { ok: true, win: false, shortcut: true });
 });
 
-test('shortcut landing on a different ring fails', () => {
+test('passing over lines to another ring is fine if it lands clean', () => {
   const a = onTrack(0, Math.PI / 2);
   const b = onTrack(1, (3 * Math.PI) / 2);
-  assert.deepEqual(judgePush(cfg, a, b, slide(a, b)), { ok: false, reason: 'wrong-track' });
+  const crossed = slide(a, b);
+  assert.equal(crossed, true);
+  assert.deepEqual(judgePush(cfg, a, b, crossed), { ok: true, win: false, shortcut: true });
 });
 
-test('jumping a line but staying on the same half fails', () => {
+test('jumping inwards on the same half is a shortcut', () => {
   const a = onTrack(0, Math.PI / 2);
-  const b = onTrack(1, Math.PI / 2);
-  assert.deepEqual(judgePush(cfg, a, b, slide(a, b)), { ok: false, reason: 'wrong-track' });
+  const b = onTrack(2, Math.PI / 2);
+  assert.deepEqual(judgePush(cfg, a, b, slide(a, b)), { ok: true, win: false, shortcut: true });
+});
+
+test('passing over lines but landing on one fails', () => {
+  const a = onTrack(0, Math.PI / 2);
+  const r = lineRadius(cfg, Math.PI / 2 + Math.PI * 2);
+  const b = { x: 0, y: r };
+  assert.deepEqual(judgePush(cfg, a, b, slide(a, b)), { ok: false, reason: 'line' });
 });
 
 test('leaving the spiral fails', () => {

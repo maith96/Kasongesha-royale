@@ -6,12 +6,11 @@ leg and push your stone along a chalk spiral to the centre.
 ## Rules
 
 - Push your stone along the spiral track towards the centre.
-- The stone must never stop on a line (the spiral or the divider).
-- **Shortcut:** from one half of the spiral you can push the stone across the
-  middle to the other half, as long as it lands on the **same ring** (outermost
-  to outermost, second to second, …) and not on the divider.
+- The stone may slide over lines, but must never **stop** on one (the spiral
+  or the divider). Pushing over lines towards the centre is a shortcut.
 - Hopping on one leg is the **balance meter**: release your swipe near the
   middle for an accurate push. In the red zone your foot touches down.
+  (Currently switched off via `BALANCE_ENABLED` in `src/game/useGame.ts`.)
 - Any mistake sends your stone back to the start. First to the centre wins.
 
 ## Playing
@@ -24,7 +23,7 @@ npm run typecheck
 ```
 
 Swipe in the direction you want to push; the dashed line shows how far the
-stone will slide (before wobble). 1–4 players, pass-and-play on one phone.
+stone will slide. 1–4 players, pass-and-play on one phone.
 
 ## Code
 
