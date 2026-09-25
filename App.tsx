@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { NavigationBar } from 'expo-navigation-bar';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
@@ -14,7 +15,9 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.screen}>
-        <StatusBar style="light" />
+        {/* Fullscreen: hide the status bar and Android nav bar (swipe from an edge to peek) */}
+        <StatusBar style="light" hidden />
+        <NavigationBar hidden />
         {players === null ? (
           <Menu onStart={setPlayers} />
         ) : (
