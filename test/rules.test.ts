@@ -9,7 +9,7 @@ import {
   startPosition,
   touchesLine,
 } from '../src/game/spiral';
-import { judgePush, PushTracker } from '../src/game/rules';
+import { judgePush, progressFraction, PushTracker } from '../src/game/rules';
 
 // Centre of ring `ring` at angle `phi`.
 function onTrack(ring: number, phi: number) {
@@ -103,4 +103,10 @@ test('stopping fully inside the centre wins', () => {
   const b = { x: 5, y: -5 };
   const v = judgePush(cfg, a, b, slide(a, b));
   assert.equal(v.ok && v.win, true);
+});
+
+test('progress is 0 at the start and 1 at home', () => {
+  const s = startPosition(cfg);
+  assert.equal(progressFraction(cfg, s.x, s.y), 0);
+  assert.equal(progressFraction(cfg, 0, 0), 1);
 });

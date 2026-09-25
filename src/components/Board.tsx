@@ -1,8 +1,8 @@
 import { useMemo, useRef } from 'react';
 import { PanResponder, View } from 'react-native';
-import Svg, { Circle, G, Line, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, G, Line, Path, Text as SvgText } from 'react-native-svg';
 
-import { dividerEnd, outerRadius, spiralPoints, SpiralConfig } from '../game/spiral';
+import { dividerEnd, outerRadius, spiralPoints, SpiralConfig, startPosition } from '../game/spiral';
 import type { Player } from '../game/useGame';
 
 type Props = {
@@ -17,14 +17,20 @@ type Props = {
   onAim: (angle: number) => void;
 };
 
-const CHALK = '#fffaf0';
-const MARGIN = 20;
+export const CHALK = '#fdf6e3';
+const INK = '#2a1a0c';
+const MARGIN = 12;
 // The guide shows direction only; judging the distance is the skill.
-const GUIDE_LENGTH = 70;
-const SHOE_LENGTH = 38;
-const SHOE_WIDTH = 20;
+const GUIDE_LENGTH = 110;
 const SHOE_GAP = 3; // between toe and stone at rest
-const SHOE_PULL = 34; // how far back the shoe goes at full power
+const SHOE_PULL = 40; // how far back the shoe goes at full power
+const SHOE_SCALE = 1.35;
+const SHOE_TOE = 24 * SHOE_SCALE; // x of the toe tip in the shoe drawing
+const FONT = 'Helvetica, Arial, sans-serif';
+
+// Top-down sneaker, toe pointing along +x with its tip at x = SHOE_TOE.
+const SHOE_OUTLINE =
+  'M -24 -7 C -24 -11 -10 -12 4 -12 C 18 -12 24 -6 24 0 C 24 6 18 12 4 12 C -10 12 -24 11 -24 7 Z';
 
 export function Board({ cfg, size, players, current, movingStone, aim, power, canAim, onAim }: Props) {
   const outer = outerRadius(cfg);
@@ -37,6 +43,7 @@ export function Board({ cfg, size, players, current, movingStone, aim, power, ca
     const pts = spiralPoints(cfg);
     return pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
   }, [cfg]);
+  const startX = useMemo(() => startPosition(cfg).x, [cfg]);
 
   const me = players[current];
 
@@ -67,54 +74,57 @@ export function Board({ cfg, size, players, current, movingStone, aim, power, ca
   }, []);
 
   const stone = movingStone ?? me;
+  const deg = (aim * 180) / Math.PI;
+  const shoeBack = cfg.stoneRadius + SHOE_GAP + power * SHOE_PULL + SHOE_TOE;
+  const line = { stroke: CHALK, strokeWidth: 5, strokeLinecap: 'round' as const };
 
   return (
     <View ref={view} style={{ width: size, height: size }} {...responder.panHandlers}>
       <Svg width={size} height={size} viewBox={`${-half} ${-half} ${half * 2} ${half * 2}`}>
         {/* home */}
-        <Circle r={cfg.centreRadius - 4} fill="#f4d58d" opacity={0.6} />
-        {/* spiral line */}
-        <Path d={spiralPath} stroke={CHALK} strokeWidth={4} fill="none" strokeLinecap="round" />
-        {/* divider, stopping at the home circle */}
-        <Line x1={-dividerEnd(cfg, 'left')} y1={0} x2={-cfg.centreRadius} y2={0} stroke={CHALK} strokeWidth={4} strokeLinecap="round" />
-        <Line x1={cfg.centreRadius} y1={0} x2={dividerEnd(cfg, 'right')} y2={0} stroke={CHALK} strokeWidth={4} strokeLinecap="round" />
+        <Circle r={cfg.centreRadius - 6} fill="#f2c14e" opacity={0.35} />
+        <SvgText y={5} fontSize={14} fontWeight="bold" fontFamily={FONT} fill={CHALK} textAnchor="middle">
+          HOME
+        </SvgText>
 
+        {/* chalk: spiral and divider (stopping at home) */}
+        <Path d={spiralPath} fill="none" {...line} />
+        <Line x1={-dividerEnd(cfg, 'left')} y1={0} x2={-cfg.centreRadius} y2={0} {...line} />
+        <Line x1={cfg.centreRadius} y1={0} x2={dividerEnd(cfg, 'right')} y2={0} {...line} />
+
+        {/* start marker, in the open mouth of the spiral above the entrance */}
+        <SvgText x={startX} y={-12} fontSize={13} fontWeight="bold" fontFamily={FONT} fill={CHALK} textAnchor="middle">
+          START ↓
+        </SvgText>
+
+        {/* other players' stones */}
         {players.map((p, i) =>
           i === current ? null : (
-            <Circle key={i} cx={p.x} cy={p.y} r={cfg.stoneRadius} fill={p.color} opacity={0.35} />
+            <Circle key={i} cx={p.x} cy={p.y} r={cfg.stoneRadius} fill={p.color} opacity={0.45} stroke={INK} strokeWidth={1.5} />
           ),
         )}
 
         {canAim && (
-          <Line
-            x1={me.x + Math.cos(aim) * (cfg.stoneRadius + 4)}
-            y1={me.y + Math.sin(aim) * (cfg.stoneRadius + 4)}
-            x2={me.x + Math.cos(aim) * GUIDE_LENGTH}
-            y2={me.y + Math.sin(aim) * GUIDE_LENGTH}
-            stroke={me.color}
-            strokeWidth={3}
-            strokeDasharray="6 5"
-            strokeLinecap="round"
-          />
-        )}
-
-        <Circle cx={stone.x} cy={stone.y} r={cfg.stoneRadius} fill={me.color} stroke="#3b2a1a" strokeWidth={2} />
-
-        {/* the shoe, behind the stone with its toe pointing where you aim */}
-        {canAim && (
-          <G transform={`translate(${me.x} ${me.y}) rotate(${(aim * 180) / Math.PI})`}>
-            <Rect
-              x={-(cfg.stoneRadius + SHOE_GAP + power * SHOE_PULL + SHOE_LENGTH)}
-              y={-SHOE_WIDTH / 2}
-              width={SHOE_LENGTH}
-              height={SHOE_WIDTH}
-              rx={7}
-              fill="#5b3a1e"
-              stroke="#2a1a0c"
-              strokeWidth={2}
-            />
+          <G transform={`translate(${me.x} ${me.y}) rotate(${deg})`}>
+            {/* aim guide: direction only */}
+            <Line x1={cfg.stoneRadius + 6} y1={0} x2={GUIDE_LENGTH} y2={0} stroke={CHALK} strokeWidth={3} strokeDasharray="2 9" strokeLinecap="round" opacity={0.9} />
+            <Circle cx={GUIDE_LENGTH} cy={0} r={4} fill={CHALK} opacity={0.9} />
+            {/* the shoe, toe towards the stone, pulls back with power */}
+            <G transform={`translate(${-shoeBack} 0) scale(${SHOE_SCALE})`}>
+              <Path d={SHOE_OUTLINE} fill="#f5f0e6" stroke={INK} strokeWidth={2.5} />
+              <Path d="M -18 -8 C -6 -9 6 -9 14 -5" stroke={me.color} strokeWidth={4} fill="none" strokeLinecap="round" />
+              <Path d="M -18 8 C -6 9 6 9 14 5" stroke={me.color} strokeWidth={4} fill="none" strokeLinecap="round" />
+              {[-8, -2, 4].map((x) => (
+                <Line key={x} x1={x} y1={-4} x2={x} y2={4} stroke={INK} strokeWidth={2} strokeLinecap="round" />
+              ))}
+            </G>
           </G>
         )}
+
+        {/* current stone with a shadow */}
+        <Circle cx={stone.x + 2} cy={stone.y + 3} r={cfg.stoneRadius} fill="#000" opacity={0.3} />
+        <Circle cx={stone.x} cy={stone.y} r={cfg.stoneRadius} fill={me.color} stroke={INK} strokeWidth={2.5} />
+        <Circle cx={stone.x - 3} cy={stone.y - 3} r={cfg.stoneRadius / 3} fill="#fff" opacity={0.35} />
       </Svg>
     </View>
   );

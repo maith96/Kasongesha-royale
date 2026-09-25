@@ -1,4 +1,4 @@
-import { locate, SpiralConfig, touchesLine } from './spiral';
+import { locate, SpiralConfig, startPosition, touchesLine } from './spiral';
 
 const TAU = Math.PI * 2;
 
@@ -45,5 +45,7 @@ export function progressFraction(cfg: SpiralConfig, x: number, y: number): numbe
   const loc = locate(cfg, x, y);
   if (loc.kind === 'home') return 1;
   if (loc.kind === 'outside') return 0;
-  return loc.progress / (TAU * cfg.rings);
+  const s = startPosition(cfg);
+  const from = locate(cfg, s.x, s.y).progress;
+  return Math.max(0, (loc.progress - from) / (TAU * cfg.rings - from));
 }

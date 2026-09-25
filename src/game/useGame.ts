@@ -25,7 +25,9 @@ const FAIL_TEXT: Record<Extract<Verdict, { ok: false }>['reason'], string> = {
   'foot-down': 'Mguu chini! You lost balance. Back to start.',
 };
 
-const INTRO = 'Tap the board to aim, then pull the power bar down and let go.';
+const INTRO = 'Touch the board to aim, then pull the kick pad down.';
+
+export type Tone = 'info' | 'good' | 'bad';
 
 // Default aim: straight ahead along the track (the spiral runs clockwise).
 function trackDirection(p: { x: number; y: number }): number {
@@ -47,6 +49,7 @@ export function useGame(playerCount: number) {
   const current = useRef(0);
   const phase = useRef<Phase>('aim');
   const message = useRef(INTRO);
+  const tone = useRef<Tone>('info');
   const aim = useRef(trackDirection(players.current[0]));
   const wobble = useRef(0);
   const wobbleSpeed = useRef(2.2);
@@ -60,7 +63,8 @@ export function useGame(playerCount: number) {
     wobbleSpeed.current = 1.8 + Math.random() * 1.6;
     phase.current = 'aim';
     aim.current = trackDirection(players.current[current.current]);
-    message.current = `${players.current[current.current].name}, your turn.`;
+    message.current = `${players.current[current.current].name}'s turn`;
+    tone.current = 'info';
     setTick((t) => t + 1);
   }, []);
 
@@ -73,14 +77,17 @@ export function useGame(playerCount: number) {
         if (verdict.win) {
           phase.current = 'won';
           message.current = `${p.name} amefika! 🏆`;
+          tone.current = 'good';
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           setTick((t) => t + 1);
           return;
         }
         message.current = verdict.shortcut ? 'Shortcut safi! 🔥' : 'Poa!';
+        tone.current = 'good';
       } else {
         Object.assign(p, startPosition(cfg));
         message.current = FAIL_TEXT[verdict.reason];
+        tone.current = 'bad';
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
       phase.current = 'result';
@@ -163,7 +170,8 @@ export function useGame(playerCount: number) {
       pushFrom.current = { x: p.x, y: p.y };
       tracker.current = new PushTracker(cfg, p.x, p.y);
       phase.current = 'moving';
-      message.current = '…';
+      message.current = '';
+      tone.current = 'info';
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     },
     [finishPush],
@@ -176,6 +184,7 @@ export function useGame(playerCount: number) {
     phase.current = 'aim';
     aim.current = trackDirection(players.current[0]);
     message.current = INTRO;
+    tone.current = 'info';
     setTick((t) => t + 1);
   }, [playerCount]);
 
@@ -184,6 +193,7 @@ export function useGame(playerCount: number) {
     current: current.current,
     phase: phase.current,
     message: message.current,
+    tone: tone.current,
     wobble: wobble.current,
     footDownAt: FOOT_DOWN,
     movingStone: phase.current === 'moving' ? stone.current : null,

@@ -20,9 +20,9 @@ export type SpiralConfig = {
 
 export const DEFAULT_SPIRAL: SpiralConfig = {
   rings: 4,
-  pitch: 56,
-  centreRadius: 44,
-  stoneRadius: 11,
+  pitch: 58,
+  centreRadius: 42,
+  stoneRadius: 12,
 };
 
 export type Half = 'top' | 'bottom';
