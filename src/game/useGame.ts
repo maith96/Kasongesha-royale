@@ -25,7 +25,7 @@ const FAIL_TEXT: Record<Extract<Verdict, { ok: false }>['reason'], string> = {
   'foot-down': 'Mguu chini! You lost balance. Back to start.',
 };
 
-const INTRO = 'Touch the board to aim, then pull the kick pad down.';
+const INTRO = 'Tap the board to aim. Pull POWER down to kick.';
 
 export type Tone = 'info' | 'good' | 'bad';
 
