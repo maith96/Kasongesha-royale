@@ -8,6 +8,10 @@
 // Actual radius = normalised radius × P(φ), so the ring/progress maths is the
 // same for every shape once a point's radius is divided by P(φ).
 //
+// A round spiral shrinks smoothly. A polygon spiral is drawn like chalk on the
+// ground: each side is a straight line parallel to the shape's edge, and the
+// line steps inwards by pitch / sides at every corner.
+//
 // World coordinates are centred on the spiral's centre, with y pointing down
 // (same as SVG). The spiral line starts at angle 0 (on the divider, right side)
 // at the outer edge and winds clockwise inwards for `rings` full turns.
@@ -69,8 +73,22 @@ export function maxTheta(cfg: SpiralConfig): number {
   return TAU * cfg.rings;
 }
 
+function firstCorner(cfg: SpiralConfig): number {
+  return normAngle(cfg.rotation) % (TAU / cfg.sides);
+}
+
+// How far the line has stepped in by angle φ within one turn, φ in [0, 2π).
+function turnOffset(cfg: SpiralConfig, phi: number): number {
+  if (cfg.sides < 3) return (cfg.pitch * phi) / TAU;
+  const c = firstCorner(cfg);
+  const corners = phi < c ? 0 : Math.floor((phi - c) / (TAU / cfg.sides)) + 1;
+  return (cfg.pitch / cfg.sides) * corners;
+}
+
+// Normalised distance from the centre to the spiral line at turn angle θ.
 function normalisedLine(cfg: SpiralConfig, theta: number): number {
-  return outerRadius(cfg) - (cfg.pitch * theta) / TAU;
+  const turns = Math.floor(theta / TAU);
+  return outerRadius(cfg) - cfg.pitch * turns - turnOffset(cfg, theta - turns * TAU);
 }
 
 // Actual distance from the centre to the spiral line at turn angle θ.
@@ -98,7 +116,7 @@ export function locate(cfg: SpiralConfig, x: number, y: number): Location {
     return { r, phi, half, kind: 'home', ring: cfg.rings, progress: maxTheta(cfg) };
   }
 
-  const ring = Math.floor((outerRadius(cfg) - rn) / cfg.pitch - phi / TAU);
+  const ring = Math.floor((outerRadius(cfg) - turnOffset(cfg, phi) - rn) / cfg.pitch);
   if (ring < 0) {
     return { r, phi, half, kind: 'outside', ring: -1, progress: -1 };
   }
@@ -114,8 +132,7 @@ function sampleAngles(cfg: SpiralConfig, end: number, step: number): number[] {
   const ts: number[] = [];
   for (let t = 0; t < end; t += step) ts.push(t);
   if (cfg.sides >= 3) {
-    const seg = TAU / cfg.sides;
-    for (let c = normAngle(cfg.rotation) % seg; c < end; c += seg) ts.push(c);
+    for (let c = firstCorner(cfg); c < end; c += TAU / cfg.sides) ts.push(c);
   }
   ts.push(end);
   return ts.sort((a, b) => a - b);
@@ -123,11 +140,33 @@ function sampleAngles(cfg: SpiralConfig, end: number, step: number): number[] {
 
 const pointCache = new WeakMap<SpiralConfig, Point[]>();
 
+// Corner where the side ending at angle t meets the next, one step further in.
+function cornerPoint(cfg: SpiralConfig, t: number): Point {
+  const seg = TAU / cfg.sides;
+  const n1 = t - seg / 2; // outward normal of the side before the corner
+  const n2 = t + seg / 2; // and after it
+  const r1 = normalisedLine(cfg, t - seg / 2);
+  const r2 = normalisedLine(cfg, t + seg / 2);
+  const det = Math.sin(seg);
+  return {
+    x: (r1 * Math.sin(n2) - r2 * Math.sin(n1)) / det,
+    y: (r2 * Math.cos(n1) - r1 * Math.cos(n2)) / det,
+  };
+}
+
 // Points along the spiral line, for drawing and touch tests.
 export function spiralPoints(cfg: SpiralConfig): Point[] {
   let pts = pointCache.get(cfg);
   if (!pts) {
-    pts = sampleAngles(cfg, maxTheta(cfg), 0.03).map((t) => polar(lineRadius(cfg, t), t));
+    const end = maxTheta(cfg);
+    if (cfg.sides < 3) {
+      pts = sampleAngles(cfg, end, 0.03).map((t) => polar(lineRadius(cfg, t), t));
+    } else {
+      // Straight sides: just the start, every corner, and the end.
+      pts = [polar(lineRadius(cfg, 0), 0)];
+      for (let t = firstCorner(cfg); t < end; t += TAU / cfg.sides) pts.push(cornerPoint(cfg, t));
+      pts.push(polar(cfg.centreRadius * shapeFactor(cfg, 0), 0));
+    }
     pointCache.set(cfg, pts);
   }
   return pts;

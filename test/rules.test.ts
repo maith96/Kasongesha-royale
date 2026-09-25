@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { lineRadius, locate, SpiralConfig, startPosition, touchesLine, trackPoint } from '../src/game/spiral';
+import { lineRadius, locate, maxTheta, SpiralConfig, startPosition, touchesLine, trackPoint } from '../src/game/spiral';
 import { judgePush, progressFraction, PushTracker } from '../src/game/rules';
 import { STAGES } from '../src/game/stages';
 
@@ -35,6 +35,7 @@ for (const { name, cfg } of STAGES) {
         const p = at(k, phi);
         if (locate(cfg, p.x, p.y).kind !== 'track') continue;
         if (Math.abs(p.y) < cfg.stoneRadius) continue; // on the divider
+        if (phi + Math.PI * 2 * (k + 1) > maxTheta(cfg)) continue; // past the line's end: no inner wall
         assert.equal(locate(cfg, p.x, p.y).ring, k, `ring ${k} at ${phi.toFixed(2)}`);
         assert.equal(touchesLine(cfg, p.x, p.y), false, `ring ${k} at ${phi.toFixed(2)} touches`);
       }
