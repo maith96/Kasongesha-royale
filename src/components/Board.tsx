@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react';
 import { PanResponder, View } from 'react-native';
 import Svg, { Circle, G, Line, Path, Text as SvgText } from 'react-native-svg';
 
-import { dividerEnd, outerRadius, spiralPoints, SpiralConfig, startPosition } from '../game/spiral';
+import { boardBounds, dividerEnd, spiralPoints, SpiralConfig, startPosition } from '../game/spiral';
 import type { Player } from '../game/useGame';
 
 type Props = {
@@ -19,7 +19,7 @@ type Props = {
 
 export const CHALK = '#fdf6e3';
 const INK = '#2a1a0c';
-const MARGIN = 12;
+const MARGIN = 8; // world units of ground around the chalk
 // The guide shows direction only; judging the distance is the skill.
 const GUIDE_LENGTH = 110;
 const SHOE_GAP = 3; // between toe and stone at rest
@@ -33,9 +33,13 @@ const SHOE_OUTLINE =
   'M -24 -7 C -24 -11 -10 -12 4 -12 C 18 -12 24 -6 24 0 C 24 6 18 12 4 12 C -10 12 -24 11 -24 7 Z';
 
 export function Board({ cfg, size, players, current, movingStone, aim, power, canAim, onAim }: Props) {
-  const outer = outerRadius(cfg);
-  const half = outer + MARGIN;
-  const scale = size / (half * 2);
+  // Square view centred on the drawing (the spiral itself is lopsided).
+  const view0 = useMemo(() => {
+    const b = boardBounds(cfg);
+    const side = Math.max(b.maxX - b.minX, b.maxY - b.minY) + MARGIN * 2;
+    return { x: (b.minX + b.maxX - side) / 2, y: (b.minY + b.maxY - side) / 2, side };
+  }, [cfg]);
+  const scale = size / view0.side;
   const view = useRef<View>(null);
   const origin = useRef({ x: 0, y: 0 });
 
@@ -48,15 +52,15 @@ export function Board({ cfg, size, players, current, movingStone, aim, power, ca
   const me = players[current];
 
   // Keep the latest props reachable from the PanResponder created once.
-  const latest = useRef({ canAim, onAim, scale, half, me });
-  latest.current = { canAim, onAim, scale, half, me };
+  const latest = useRef({ canAim, onAim, scale, view0, me });
+  latest.current = { canAim, onAim, scale, view0, me };
 
   const responder = useMemo(() => {
     // Point the aim from the stone towards the finger.
     const aimAt = (pageX: number, pageY: number) => {
-      const { scale, half, me, onAim } = latest.current;
-      const wx = (pageX - origin.current.x) / scale - half;
-      const wy = (pageY - origin.current.y) / scale - half;
+      const { scale, view0, me, onAim } = latest.current;
+      const wx = (pageX - origin.current.x) / scale + view0.x;
+      const wy = (pageY - origin.current.y) / scale + view0.y;
       if (Math.hypot(wx - me.x, wy - me.y) > 1) onAim(Math.atan2(wy - me.y, wx - me.x));
     };
     return PanResponder.create({
@@ -80,7 +84,7 @@ export function Board({ cfg, size, players, current, movingStone, aim, power, ca
 
   return (
     <View ref={view} style={{ width: size, height: size }} {...responder.panHandlers}>
-      <Svg width={size} height={size} viewBox={`${-half} ${-half} ${half * 2} ${half * 2}`}>
+      <Svg width={size} height={size} viewBox={`${view0.x} ${view0.y} ${view0.side} ${view0.side}`}>
         {/* home */}
         <Circle r={cfg.centreRadius - 6} fill="#f2c14e" opacity={0.35} />
         <SvgText y={5} fontSize={14} fontWeight="bold" fontFamily={FONT} fill={CHALK} textAnchor="middle">

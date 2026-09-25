@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { BalanceMeter } from './src/components/BalanceMeter';
 import { Board } from './src/components/Board';
@@ -49,14 +49,12 @@ function Menu({ onStart }: { onStart: (n: number) => void }) {
 }
 
 function Game({ playerCount, onExit }: { playerCount: number; onExit: () => void }) {
-  const { width, height } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
+  const [area, setArea] = useState({ width: 0, height: 0 });
   const g = useGame(playerCount);
   const me = g.players[g.current];
   const [power, setPower] = useState(0);
   useEffect(() => setPower(0), [g.current]);
-  const usableHeight = height - insets.top - insets.bottom;
-  const boardSize = Math.min(usableHeight - 8, width - insets.left - insets.right - SIDE_PANEL - POWER_BAR, 720);
+  const boardSize = Math.max(0, Math.min(area.width, area.height - BOARD_PAD * 2));
 
   return (
     <View style={styles.game}>
@@ -98,27 +96,32 @@ function Game({ playerCount, onExit }: { playerCount: number; onExit: () => void
         {BALANCE_ENABLED && <BalanceMeter wobble={g.phase === 'aim' ? g.wobble : 0} footDownAt={g.footDownAt} />}
       </View>
 
-      <View style={styles.boardArea}>
-        <Board
-          cfg={cfg}
-          size={boardSize}
-          players={g.players}
-          current={g.current}
-          movingStone={g.movingStone}
-          aim={g.aim}
-          power={power}
-          canAim={g.phase === 'aim'}
-          onAim={g.setAim}
-        />
+      <View style={styles.boardArea} onLayout={(e) => setArea(e.nativeEvent.layout)}>
+        {boardSize > 0 && (
+          <Board
+            cfg={cfg}
+            size={boardSize}
+            players={g.players}
+            current={g.current}
+            movingStone={g.movingStone}
+            aim={g.aim}
+            power={power}
+            canAim={g.phase === 'aim'}
+            onAim={g.setAim}
+          />
+        )}
       </View>
 
-      <PowerBar
-        height={boardSize * 0.72}
-        color={me.color}
-        enabled={g.phase === 'aim'}
-        onShoot={g.push}
-        onPowerChange={setPower}
-      />
+      {/* same width as the left panel so the board sits in the middle of the screen */}
+      <View style={styles.powerSide}>
+        <PowerBar
+          height={Math.max(120, area.height * 0.72)}
+          color={me.color}
+          enabled={g.phase === 'aim'}
+          onShoot={g.push}
+          onPowerChange={setPower}
+        />
+      </View>
     </View>
   );
 }
@@ -126,7 +129,7 @@ function Game({ playerCount, onExit }: { playerCount: number; onExit: () => void
 const CHALK = '#fdf6e3';
 const INK = '#2a1a0c';
 const SIDE_PANEL = 170;
-const POWER_BAR = 76;
+const BOARD_PAD = 4;
 
 const BANNER = StyleSheet.create({
   info: { backgroundColor: '#00000022' },
@@ -178,5 +181,6 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   bannerText: { color: CHALK, fontSize: 16, fontWeight: '800', textAlign: 'center' },
-  boardArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  boardArea: { flex: 1, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center', paddingVertical: BOARD_PAD },
+  powerSide: { width: SIDE_PANEL, alignSelf: 'stretch', alignItems: 'flex-end', justifyContent: 'center' },
 });

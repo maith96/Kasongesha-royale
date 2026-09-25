@@ -129,3 +129,16 @@ export function spiralPoints(cfg: SpiralConfig, step = 0.05): { x: number; y: nu
   pts.push({ x: cfg.centreRadius, y: 0 });
   return pts;
 }
+
+// Tight box around everything drawn in chalk, for framing the board.
+export function boardBounds(cfg: SpiralConfig) {
+  const pts = spiralPoints(cfg);
+  const xs = pts.map((p) => p.x).concat(-dividerEnd(cfg, 'left'), dividerEnd(cfg, 'right'));
+  const ys = pts.map((p) => p.y);
+  return {
+    minX: Math.min(...xs),
+    maxX: Math.max(...xs),
+    minY: Math.min(...ys),
+    maxY: Math.max(...ys),
+  };
+}
