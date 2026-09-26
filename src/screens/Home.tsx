@@ -11,9 +11,10 @@ type Props = {
   onLanguage: (l: Lang) => void;
   onCampaign: () => void;
   onFreePlay: () => void;
+  onOnline: () => void;
 };
 
-export function Home({ stars, maxStars, language, onLanguage, onCampaign, onFreePlay }: Props) {
+export function Home({ stars, maxStars, language, onLanguage, onCampaign, onFreePlay, onOnline }: Props) {
   const t = useStrings();
   return (
     <View style={styles.fill}>
@@ -47,6 +48,10 @@ export function Home({ stars, maxStars, language, onLanguage, onCampaign, onFree
             <Text style={ui.buttonText}>{t.home.freePlay}</Text>
             <Text style={styles.sub}>{t.home.freePlaySub}</Text>
           </Pressable>
+          <Pressable style={[ui.button, styles.big]} onPress={onOnline}>
+            <Text style={ui.buttonText}>{t.online.title}</Text>
+            <Text style={styles.sub}>{t.online.sub}</Text>
+          </Pressable>
         </View>
       </View>
     </View>
@@ -60,7 +65,7 @@ const styles = StyleSheet.create({
   langText: { fontSize: 13 },
   wrap: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 40 },
   left: { alignItems: 'center', gap: 16, flexShrink: 1 },
-  right: { gap: 14, width: 280 },
-  big: { paddingVertical: 16 },
+  right: { gap: 10, width: 280 },
+  big: { paddingVertical: 12 },
   sub: { color: '#5b3d22', fontSize: 13, fontWeight: '700', marginTop: 2 },
 });

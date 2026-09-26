@@ -14,6 +14,8 @@ import { Campaign } from './src/screens/Campaign';
 import { FreePlay, FreePlayOptions } from './src/screens/FreePlay';
 import { GameScreen, MatchConfig } from './src/screens/GameScreen';
 import { Home } from './src/screens/Home';
+import { OnlineMatch } from './src/screens/OnlineMatch';
+import { OnlineMenu } from './src/screens/OnlineMenu';
 import { ui } from './src/ui/theme';
 
 type Source = { kind: 'free' } | { kind: 'level'; index: number };
@@ -21,6 +23,8 @@ type Route =
   | { name: 'home' }
   | { name: 'free' }
   | { name: 'campaign' }
+  | { name: 'online' }
+  | { name: 'onlineMatch'; code: string }
   // matchNo is bumped to start a fresh match with the same config.
   | { name: 'game'; config: MatchConfig; source: Source; matchNo: number };
 
@@ -101,8 +105,13 @@ export default function App() {
         onLanguage={changeLanguage}
         onCampaign={() => setRoute({ name: 'campaign' })}
         onFreePlay={() => setRoute({ name: 'free' })}
+        onOnline={() => setRoute({ name: 'online' })}
       />
     );
+  } else if (route.name === 'online') {
+    screen = <OnlineMenu onOpen={(code) => setRoute({ name: 'onlineMatch', code })} onBack={() => setRoute({ name: 'home' })} />;
+  } else if (route.name === 'onlineMatch') {
+    screen = <OnlineMatch key={route.code} code={route.code} onExit={() => setRoute({ name: 'online' })} />;
   } else if (route.name === 'free') {
     screen = (
       <FreePlay

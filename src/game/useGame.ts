@@ -135,11 +135,13 @@ export function useGame(
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
-    return () => {
-      cancelAnimationFrame(raf);
-      if (timer.current) clearTimeout(timer.current);
-    };
+    return () => cancelAnimationFrame(raf);
   }, [land]);
+
+  // Pending pauses only stop when the screen closes.
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
 
   useEffect(() => {
     startAiming();
@@ -217,3 +219,6 @@ export function useGame(
     push,
   };
 }
+
+// What a game screen needs from a game, local or online.
+export type GameState = ReturnType<typeof useGame>;

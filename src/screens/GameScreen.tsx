@@ -6,12 +6,12 @@ import { BalanceMeter } from '../components/BalanceMeter';
 import { Board } from '../components/Board';
 import { PowerBar } from '../components/PowerBar';
 import { Results } from '../components/Results';
-import type { Standing } from '../game/match';
+import type { MatchSettings, Standing } from '../game/match';
 import { buildReplay } from '../game/replay';
 import { progressFraction } from '../game/rules';
 import { STAGES } from '../game/stages';
 import { friction, SURFACES } from '../game/surfaces';
-import { BALANCE_ENABLED, useGame } from '../game/useGame';
+import { BALANCE_ENABLED, GameState, useGame } from '../game/useGame';
 import { useReplay } from '../game/useReplay';
 import { nameOf } from '../i18n';
 import { useStrings } from '../i18n/useStrings';
@@ -38,15 +38,35 @@ type Props = {
   onFinished?: (results: Standing[]) => void;
 };
 
-export function GameScreen({ config, onRestart, onRematch, onExit, next, onFinished }: Props) {
-  const { title, stage, surface, wet, par, playerCount, kicksPerTurn, firstPlayer } = config;
+// A local game: solo, campaign or pass-and-play on one phone.
+export function GameScreen(props: Props) {
+  const { stage, surface, wet, par, playerCount, kicksPerTurn, firstPlayer } = props.config;
+  const [settings] = useState<MatchSettings>(() => ({ kicksPerTurn: playerCount === 1 ? 1 : kicksPerTurn, par }));
+  const fr = friction(SURFACES[surface], wet);
+  const g = useGame(playerCount, STAGES[stage].cfg, fr, settings, firstPlayer, wet);
+  return <GameView {...props} g={g} settings={settings} />;
+}
+
+type ViewProps = {
+  config: MatchConfig;
+  g: GameState; // from useGame or useOnlineGame
+  settings: MatchSettings;
+  onExit: () => void;
+  onRestart?: () => void; // hidden when absent (online)
+  onRematch?: () => void;
+  next: { label: string; onPress: () => void } | null;
+  onFinished?: (results: Standing[]) => void;
+  showNames?: boolean; // online: real names on the player chips
+};
+
+// The game screen itself: side panel, board, power bar, results and replay.
+export function GameView({ config, g, settings, onExit, onRestart, onRematch, next, onFinished, showNames }: ViewProps) {
+  const { title, stage, surface, wet, par, playerCount, firstPlayer } = config;
   const t = useStrings();
   const [area, setArea] = useState({ width: 0, height: 0 });
   const { cfg, icon } = STAGES[stage];
   const ground = SURFACES[surface];
   const fr = friction(ground, wet);
-  const [settings] = useState(() => ({ kicksPerTurn: playerCount === 1 ? 1 : kicksPerTurn, par }));
-  const g = useGame(playerCount, cfg, fr, settings, firstPlayer, wet);
   const [power, setPower] = useState(0);
   useEffect(() => setPower(0), [g.current]);
 
@@ -101,7 +121,7 @@ export function GameScreen({ config, onRestart, onRematch, onExit, next, onFinis
             <Pressable onPress={toggleMute} hitSlop={10}>
               <Text style={ui.link}>{muted ? '🔇' : '🔊'}</Text>
             </Pressable>
-            {!watching && (
+            {!watching && onRestart && (
               <Pressable onPress={onRestart} hitSlop={10}>
                 <Text style={ui.link}>↻</Text>
               </Pressable>
@@ -122,7 +142,7 @@ export function GameScreen({ config, onRestart, onRematch, onExit, next, onFinis
           {players.map((p, i) => (
             <View key={i} style={[styles.chip, i === focus && { borderColor: p.color, backgroundColor: '#00000033' }]}>
               <View style={[styles.dot, { backgroundColor: p.color }]} />
-              <Text style={[styles.chipText, i === focus && styles.chipTextActive]}>{playerCount === 1 ? t.common.you : t.common.playerShort(i + 1)}</Text>
+              <Text style={[styles.chipText, i === focus && styles.chipTextActive]}>{playerCount === 1 ? t.common.you : showNames ? p.name : t.common.playerShort(i + 1)}</Text>
               {!watching && (
                 <Text style={[styles.chipText, styles.chipStat, i === focus && styles.chipTextActive]}>
                   {p.finished ? '🏁' : `${Math.round(progressFraction(cfg, p.x, p.y) * 100)}%`} · {t.common.kicks(p.kicks)}

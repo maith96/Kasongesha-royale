@@ -11,7 +11,7 @@ type Props = {
   par: number;
   next: { label: string; onPress: () => void } | null;
   onReplay: () => void;
-  onRematch: () => void;
+  onRematch?: () => void; // hidden when absent (online, for now)
   onMenu: () => void;
 };
 
@@ -97,9 +97,11 @@ export function Results({ results, players, par, next, onReplay, onRematch, onMe
               <Text style={styles.buttonText}>{next.label}</Text>
             </Pressable>
           )}
-          <Pressable style={styles.button} onPress={onRematch}>
-            <Text style={styles.buttonText}>{solo ? s.retry : s.rematch}</Text>
-          </Pressable>
+          {onRematch && (
+            <Pressable style={styles.button} onPress={onRematch}>
+              <Text style={styles.buttonText}>{solo ? s.retry : s.rematch}</Text>
+            </Pressable>
+          )}
           <Pressable style={[styles.button, styles.ghost]} onPress={onReplay}>
             <Text style={[styles.buttonText, { color: CHALK }]}>{s.watchReplay}</Text>
           </Pressable>

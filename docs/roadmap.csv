@@ -44,15 +44,15 @@ ID,Phase,Area,Task,Details,Status,Notes
 4.7,4. Feel & polish,Art,Better stone and shoe art,,Done,Pebble-shaped stones with highlight; shoe with sole and heel tab
 4.8,4. Feel & polish,Art,App icon and splash screen,,Done,"Drawn in scripts/icon.html, rendered to assets/*.png"
 4.9,4. Feel & polish,Controls,Fix and re-enable balance meter,Optional; maybe as a hard-mode modifier,Parked,
-5.1,5. Online turn-based multiplayer,Backend,New Firebase project,Separate from Hanga,To do,
-5.2,5. Online turn-based multiplayer,Backend,Auth,"Start anonymous, upgrade to phone number or Google (decision open)",To do,
-5.3,5. Online turn-based multiplayer,Backend,Match data model,"Firestore: board, players, settings, kick inputs, results",To do,
-5.4,5. Online turn-based multiplayer,Online,Live turns,Both online: watch kicks as they happen; 30 s turn timer,To do,
-5.5,5. Online turn-based multiplayer,Online,Async turns + push notifications,"""Kevo amepiga, your turn!""",To do,
+5.1,5. Online turn-based multiplayer,Backend,New Firebase project,Separate from Hanga,Done,"Project ""kasongesha""; web config in src/online/firebase.ts; rules must be deployed (npm run deploy:rules)"
+5.2,5. Online turn-based multiplayer,Backend,Auth,"Start anonymous, upgrade to phone number or Google (decision open)",In progress,Anonymous sign-in done (persisted on device); phone/Google upgrade pending decision D.3
+5.3,5. Online turn-based multiplayer,Backend,Match data model,"Firestore: board, players, settings, kick inputs, results",Done,"matches/{code}: setup, players, kick inputs, turnUid; rules + 14 emulator tests"
+5.4,5. Online turn-based multiplayer,Online,Live turns,Both online: watch kicks as they happen; 30 s turn timer,In progress,Live turn-by-turn play works (tested 2 browsers on emulators); 30 s turn timer not yet
+5.5,5. Online turn-based multiplayer,Online,Async turns + push notifications,"""Kevo amepiga, your turn!""",In progress,Matches persist and resume on reopen; push notifications not yet
 5.6,5. Online turn-based multiplayer,Online,Replay opponent kicks on open,Uses Phase 1 replay player; skip / 2x,To do,
 5.7,5. Online turn-based multiplayer,Social,Emote reactions,Aii! / Umeguza! / Poa sana! / Kasongesha! during opponent turns,To do,
 5.8,5. Online turn-based multiplayer,Online,Missed turns,Skip after timeout; 3 missed turns = forfeit,To do,
-5.9,5. Online turn-based multiplayer,Social,Friend invites + rematch,Private match via code or WhatsApp link,To do,
+5.9,5. Online turn-based multiplayer,Social,Friend invites + rematch,Private match via code or WhatsApp link,In progress,6-letter code + Share button; rematch not yet
 5.10,5. Online turn-based multiplayer,Backend,Server-side replay verification,Cloud Function replays kick inputs with the same physics to confirm results (anti-cheat),To do,
 5.11,5. Online turn-based multiplayer,Backend,Matchmaking by rank,,To do,
 6.1,6. Progression & economy,Ranks,Ranks / leagues,Chalk -> Stone -> Marble -> Gold -> Royale,To do,

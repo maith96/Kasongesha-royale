@@ -74,6 +74,28 @@ Controls are pool-style: tap or drag on the board to aim (the dashed line
 shows direction only), then pull the power bar down and let go to kick. How
 far the stone slides is up to your judgement. 1–4 players, pass-and-play on one phone.
 
+## Online play (Firebase)
+
+**Play online** → host a match (board, surface, weather, kicks per turn,
+2–4 players) and share the 6-letter code, or join with a friend's code. The
+host starts when everyone's in; players take turns and watch each other's
+kicks live.
+
+- Only the kick inputs (aim + power) are stored, in `/matches/{code}`. Every
+  phone re-simulates them with the deterministic physics, so all players see
+  the same game.
+- Players sign in anonymously (kept on the device).
+- `firestore.rules` allow: create your own match, join once while waiting,
+  host starts, and only the current player appends exactly one valid kick.
+  History can't be edited and nothing can be deleted. Tests: `npm run test:rules`.
+- **Deploy the rules** after changing them (needs `firebase login` once):
+  `npm run deploy:rules`
+- Local testing without touching the live project: `npm run emulators`, then
+  `EXPO_PUBLIC_FIREBASE_EMULATOR=127.0.0.1 npx expo start`.
+
+Known gap: the rules can't run the physics, so a modified app could claim
+the wrong next turn. Server-side replay verification is planned (roadmap 5.10).
+
 ## Languages
 
 All player-facing text lives in `src/i18n/` – nothing is hard-coded in the
@@ -105,7 +127,8 @@ To add a language, copy `en.ts` to e.g. `fr.ts`, type it as `Strings`
 - `src/game/match.ts` – match engine: turns, equal turns, winner, points, stars.
 - `src/game/replay.ts`, `useReplay.ts` – rebuild a match from its kick log and play it back.
 - `src/game/campaign.ts`, `progressStore.ts` – levels, unlocking, stars; saved with AsyncStorage.
-- `src/screens/` – Home, Campaign, Free play and the game screen; `App.tsx` routes between them.
+- `src/screens/` – Home, Campaign, Free play, Online and the game screen; `App.tsx` routes between them.
+- `src/online/` – Firebase setup, match API, the online match model and `useOnlineGame`.
 - `src/audio/sounds.ts` – plays the sound effects (expo-audio), with mute.
 - `src/game/rules.ts` – judging a push (line touch, out, shortcut, win).
 - `src/game/useGame.ts` – ties the match to the screen: animates kicks, messages, pauses.

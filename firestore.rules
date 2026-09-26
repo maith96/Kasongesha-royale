@@ -1,18 +1,126 @@
-rules_version='2'
+rules_version = '2';
+
+// Kasongesha Royale security rules.
+// Anything not allowed below is denied. Tested in test-rules/ against the
+// Firestore emulator: npm run test:rules
+//
+// Online matches live at /matches/{code}. A match stores only its setup, the
+// players (join order = turn order) and the kick inputs; every phone
+// re-simulates the kicks, so there is no position or score to tamper with.
+// What the rules can't check is the physics itself, so a modified app could
+// lie about whose turn comes next; server-side replay verification is the
+// planned fix (roadmap 5.10).
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      // This rule allows anyone with your database reference to view, edit,
-      // and delete all data in your database. It is useful for getting
-      // started, but it is configured to expire after 30 days because it
-      // leaves your app open to attackers. At that time, all client
-      // requests to your database will be denied.
-      //
-      // Make sure to write security rules for your app before that time, or
-      // else all client requests to your database will be denied until you
-      // update your rules.
-      allow read, write: if request.time < timestamp.date(2026, 10, 26);
+
+    match /matches/{code} {
+      function signedIn() {
+        return request.auth != null;
+      }
+
+      // Rules can't loop over lists, so check each of the (max 4) seats.
+      function seat(d, i) {
+        return d.players.size() > i ? d.players[i].uid : null;
+      }
+      function isPlayer(d, u) {
+        return u != null && (seat(d, 0) == u || seat(d, 1) == u || seat(d, 2) == u || seat(d, 3) == u);
+      }
+
+      function validPlayer(p) {
+        return p is map && p.keys().hasOnly(['uid', 'name']) && p.keys().hasAll(['uid', 'name'])
+          && p.uid is string && p.name is string && p.name.size() >= 1 && p.name.size() <= 16;
+      }
+      function validConfig(c) {
+        return c is map && c.keys().hasOnly(['stage', 'surface', 'wet', 'kicksPerTurn'])
+          && c.keys().hasAll(['stage', 'surface', 'wet', 'kicksPerTurn'])
+          && c.stage is int && c.stage >= 0 && c.stage <= 2
+          && c.surface is int && c.surface >= 0 && c.surface <= 3
+          && c.wet is bool
+          && c.kicksPerTurn is int && c.kicksPerTurn >= 1 && c.kicksPerTurn <= 3;
+      }
+      function validKick(k) {
+        return k is map && k.keys().hasOnly(['angle', 'power']) && k.keys().hasAll(['angle', 'power'])
+          && k.angle is number && k.angle > -7 && k.angle < 7
+          && k.power is number && k.power > 0 && k.power <= 1;
+      }
+
+      // Everything already in the list is unchanged and exactly one item was added.
+      // (Slicing to an empty range errors in the rules engine, so the first item is a special case.)
+      function appendedOne(before, after) {
+        return after.size() == before.size() + 1
+          && (before.size() == 0 || after[0:before.size()] == before);
+      }
+
+      function changedOnly(keys) {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+      }
+
+      // Anyone signed in can look at a match (join by code, or watch).
+      allow read: if signedIn();
+
+      // Host creates a new match with just themselves in it.
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['code', 'hostUid', 'config', 'maxPlayers', 'players', 'status', 'kicks', 'turnUid', 'createdAt', 'updatedAt'])
+        && request.resource.data.code == code
+        && code.matches('^[A-HJKMNP-Z2-9]{6}$')
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.players.size() == 1
+        && validPlayer(request.resource.data.players[0])
+        && request.resource.data.players[0].uid == request.auth.uid
+        && request.resource.data.maxPlayers is int
+        && request.resource.data.maxPlayers >= 2 && request.resource.data.maxPlayers <= 4
+        && validConfig(request.resource.data.config)
+        && request.resource.data.status == 'waiting'
+        && request.resource.data.kicks.size() == 0
+        && request.resource.data.turnUid == null
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      // Join: add yourself (once) to a match that hasn't started and isn't full.
+      function joining() {
+        let before = resource.data;
+        let after = request.resource.data;
+        let n = before.players.size();
+        return before.status == 'waiting'
+          && !isPlayer(before, request.auth.uid)
+          && appendedOne(before.players, after.players)
+          && after.players.size() <= before.maxPlayers
+          && after.players[n].uid == request.auth.uid
+          && validPlayer(after.players[n])
+          && changedOnly(['players', 'updatedAt'])
+          && after.updatedAt == request.time;
+      }
+
+      // Start: the host starts once at least 2 have joined; the first to join kicks first.
+      function starting() {
+        let before = resource.data;
+        let after = request.resource.data;
+        return before.status == 'waiting'
+          && before.hostUid == request.auth.uid
+          && before.players.size() >= 2
+          && after.status == 'playing'
+          && after.turnUid == before.players[0].uid
+          && changedOnly(['status', 'turnUid', 'updatedAt'])
+          && after.updatedAt == request.time;
+      }
+
+      // Kick: only the player whose turn it is, exactly one new kick, history untouched.
+      function kicking() {
+        let before = resource.data;
+        let after = request.resource.data;
+        return before.status == 'playing'
+          && before.turnUid == request.auth.uid
+          && appendedOne(before.kicks, after.kicks)
+          && validKick(after.kicks[before.kicks.size()])
+          && ((after.status == 'playing' && isPlayer(before, after.turnUid))
+              || (after.status == 'over' && after.turnUid == null))
+          && changedOnly(['kicks', 'turnUid', 'status', 'updatedAt'])
+          && after.updatedAt == request.time;
+      }
+
+      allow update: if signedIn() && (joining() || starting() || kicking());
+      allow delete: if false;
     }
   }
 }
