@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 
 import { applyKick, currentPlayer, MatchSettings, MatchState, newMatch, Standing, standings } from './match';
-import type { Verdict } from './rules';
+import { playerName, Tone, verdictMessage } from './messages';
 import { KickResult, quantizeKick, SIM_DT, simulateKick } from './sim';
 import { SpiralConfig } from './spiral';
 
@@ -15,24 +15,16 @@ const TURN_PAUSE_MS = 1600; // a bit longer when the turn passes
 
 export type Player = { name: string; color: string; x: number; y: number; kicks: number; finished: boolean };
 export type Phase = 'aim' | 'moving' | 'result' | 'over';
-export type Tone = 'info' | 'good' | 'bad';
+export type { Tone };
 
-const COLORS = ['#c0392b', '#1f6fb2', '#27864a', '#8e44ad'];
+export const PLAYER_COLORS = ['#c0392b', '#1f6fb2', '#27864a', '#8e44ad'];
 
-const FAIL_TEXT: Record<Extract<Verdict, { ok: false }>['reason'], string> = {
-  line: 'Umeguza line! Back to start.',
-  outside: 'Umetoka nje! Back to start.',
-  'foot-down': 'Mguu chini! You lost balance. Back to start.',
-};
 
 // Default aim: straight ahead along the track (the spiral runs clockwise).
 function trackDirection(p: { x: number; y: number }): number {
   return Math.atan2(p.y, p.x) + Math.PI / 2;
 }
 
-function playerName(i: number, count: number) {
-  return count === 1 ? 'You' : `Player ${i + 1}`;
-}
 
 // The hook is remounted per match (see App), so its arguments are fixed for its
 // lifetime. Friction: world units / s², from the surface.
@@ -86,20 +78,11 @@ export function useGame(
     const { match: next, turnEnded } = applyKick(before, cfg, settings, done.kick, done.result.verdict, done.result.end);
     match.current = next;
     const v = done.result.verdict;
-    const name = playerName(who, playerCount);
-
-    if (v.ok && v.win) {
-      message.current = playerCount === 1 ? 'Umefika! 🏆' : `${name} amefika! 🏆`;
-      tone.current = 'good';
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } else if (v.ok) {
-      message.current = v.shortcut ? 'Shortcut safi! 🔥' : 'Poa!';
-      tone.current = 'good';
-    } else {
-      message.current = FAIL_TEXT[v.reason];
-      tone.current = 'bad';
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    }
+    const said = verdictMessage(v, playerCount === 1 ? null : playerName(who, playerCount));
+    message.current = said.message;
+    tone.current = said.tone;
+    if (v.ok && v.win) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    else if (!v.ok) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     phase.current = next.over ? 'over' : 'result';
     redraw();
     if (!next.over) {
@@ -177,7 +160,7 @@ export function useGame(
   }
   const players: Player[] = m.players.map((p, i) => ({
     name: playerName(i, playerCount),
-    color: COLORS[i % COLORS.length],
+    color: PLAYER_COLORS[i % PLAYER_COLORS.length],
     x: p.x,
     y: p.y,
     kicks: p.kicks,

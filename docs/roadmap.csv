@@ -14,7 +14,7 @@ ID,Phase,Area,Task,Details,Status,Notes
 1.1,1. Foundation,Physics,Fixed-timestep deterministic physics,"Same kick gives the same result on every phone; required for fairness, replays and online play",Done,
 1.2,1. Foundation,Physics,Extract pure kick simulation,"simulateKick(board, surface, start, angle, power) -> path + result, used by game, replays and server",Done,
 1.3,1. Foundation,Data,Record kick inputs,Log aim angle + power (+ result) for every kick in a match,Done,
-1.4,1. Foundation,Replay,Replay player,Play back recorded kicks exactly; skip and 2x speed,To do,Kick log + deterministic sim are in place; the playback UI is still to build
+1.4,1. Foundation,Replay,Replay player,Play back recorded kicks exactly; skip and 2x speed,Done,"Watch replay on the results screen: pause, 1x/2x, skip, restart"
 1.5,1. Foundation,Scoring,Kick counter,Count kicks per player per round; a fail still counts as a kick,Done,
 1.6,1. Foundation,Scoring,Par per stage,"Initial par guesses per stage, tuned in playtests",Done,"First guesses: Circle 12, Square 12, Triangle 10"
 1.7,1. Foundation,Scoring,Stars (solo),"3 stars <= par, 2 stars <= par+3, 1 star = finished",Done,
@@ -29,11 +29,11 @@ ID,Phase,Area,Task,Details,Status,Notes
 2.7,2. Turn system (pass-and-play),UI,Turn HUD,"""Kick 2 of 3"", per-player kicks and points in the left panel",Done,"Live: kick X of N, round, per-player progress and kicks. Points shown on the results screen."
 2.8,2. Turn system (pass-and-play),Menu,Kicks-per-turn picker in menu,1 / 2 / 3 selector for multiplayer,Done,
 2.9,2. Turn system (pass-and-play),Balance,Tune points values,Adjust after playtesting,To do,
-3.1,3. Campaign,Levels,12-level campaign list,"1-3 Circle (Dirt, Sand, Cement); 4-6 Square (Dirt, Cement, Tile); 7-9 Triangle (Dirt, Sand, Tile); 10-12 Rainy",To do,
-3.2,3. Campaign,Progress,Unlock next level on finish,,To do,
-3.3,3. Campaign,Progress,Star-gated bonus levels,Total stars unlock extras,To do,
-3.4,3. Campaign,Progress,Save progress on the phone,"AsyncStorage: stars, unlocked levels",To do,
-3.5,3. Campaign,Menu,Campaign vs Free play menu,Keep current free choice of shape/surface/weather as Free play,To do,
+3.1,3. Campaign,Levels,12-level campaign list,"1-3 Circle (Dirt, Sand, Cement); 4-6 Square (Dirt, Cement, Tile); 7-9 Triangle (Dirt, Sand, Tile); 10-12 Rainy",Done,"12 levels + 3 bonus; par = stage par +2 sand, +1 tile, +1 wet (guesses)"
+3.2,3. Campaign,Progress,Unlock next level on finish,,Done,
+3.3,3. Campaign,Progress,Star-gated bonus levels,Total stars unlock extras,Done,Bonus 1/2/3 need 12/24/33 stars
+3.4,3. Campaign,Progress,Save progress on the phone,"AsyncStorage: stars, unlocked levels",Done,AsyncStorage key kasongesha.progress.v1
+3.5,3. Campaign,Menu,Campaign vs Free play menu,Keep current free choice of shape/surface/weather as Free play,Done,
 3.6,3. Campaign,Balance,Tune par and friction per level,Playtest each level,To do,
 4.1,4. Feel & polish,Audio,Sounds,"Kick, slide, fail, win",To do,
 4.2,4. Feel & polish,Effects,Dust / splash where the stone stops,Splash when wet,To do,

@@ -7,9 +7,9 @@ type Props = {
   results: Standing[];
   players: Player[];
   par: number;
-  hasNextStage: boolean;
+  next: { label: string; onPress: () => void } | null;
+  onReplay: () => void;
   onRematch: () => void;
-  onNextStage: () => void;
   onMenu: () => void;
 };
 
@@ -27,7 +27,7 @@ function Stars({ n }: { n: number }) {
   );
 }
 
-export function Results({ results, players, par, hasNextStage, onRematch, onNextStage, onMenu }: Props) {
+export function Results({ results, players, par, next, onReplay, onRematch, onMenu }: Props) {
   const solo = results.length === 1;
   const winners = results.filter((r) => r.winner);
   const title = solo
@@ -75,14 +75,17 @@ export function Results({ results, players, par, hasNextStage, onRematch, onNext
         </ScrollView>
 
         <View style={styles.buttons}>
-          <Pressable style={styles.button} onPress={onRematch}>
-            <Text style={styles.buttonText}>Rematch ↻</Text>
-          </Pressable>
-          {hasNextStage && (
-            <Pressable style={styles.button} onPress={onNextStage}>
-              <Text style={styles.buttonText}>Next stage ▶</Text>
+          {next && (
+            <Pressable style={styles.button} onPress={next.onPress}>
+              <Text style={styles.buttonText}>{next.label}</Text>
             </Pressable>
           )}
+          <Pressable style={styles.button} onPress={onRematch}>
+            <Text style={styles.buttonText}>{solo ? 'Retry ↻' : 'Rematch ↻'}</Text>
+          </Pressable>
+          <Pressable style={[styles.button, styles.ghost]} onPress={onReplay}>
+            <Text style={[styles.buttonText, { color: CHALK }]}>Watch replay</Text>
+          </Pressable>
           <Pressable style={[styles.button, styles.ghost]} onPress={onMenu}>
             <Text style={[styles.buttonText, { color: CHALK }]}>Menu</Text>
           </Pressable>

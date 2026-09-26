@@ -13,6 +13,19 @@ leg and push your stone along a chalk spiral to the centre.
   (Currently switched off via `BALANCE_ENABLED` in `src/game/useGame.ts`.)
 - Any mistake sends your stone back to the start. First to the centre wins.
 
+## Campaign
+
+12 levels that introduce each shape, surface and the rain, plus 3 bonus
+levels unlocked by total stars. Finish a level to open the next; your best
+stars are saved on the phone. Free play (any board, 1–4 players) is on the
+home screen next to it.
+
+## Replays
+
+Every kick's aim and power is recorded. Because the physics is
+deterministic, **Watch replay** on the results screen re-runs the match
+exactly, with pause, 1×/2× speed and skip.
+
 ## Matches
 
 - Players take turns on the same board and watch each other kick.
@@ -66,6 +79,9 @@ far the stone slides is up to your judgement. 1–4 players, pass-and-play on on
 - `src/game/surfaces.ts` – surfaces (friction and look) and the wet modifier.
 - `src/game/sim.ts` – deterministic, fixed-timestep kick simulation (same result on every phone).
 - `src/game/match.ts` – match engine: turns, equal turns, winner, points, stars.
+- `src/game/replay.ts`, `useReplay.ts` – rebuild a match from its kick log and play it back.
+- `src/game/campaign.ts`, `progressStore.ts` – levels, unlocking, stars; saved with AsyncStorage.
+- `src/screens/` – Home, Campaign, Free play and the game screen; `App.tsx` routes between them.
 - `src/game/rules.ts` – judging a push (line touch, out, shortcut, win).
 - `src/game/useGame.ts` – ties the match to the screen: animates kicks, messages, pauses.
 - `src/components/` – the board (SVG), power bar, results screen and balance meter.
