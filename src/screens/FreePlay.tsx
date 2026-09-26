@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { STAGES } from '../game/stages';
 import { SURFACES } from '../game/surfaces';
+import { useStrings } from '../i18n/useStrings';
 import { Picker } from '../ui/Picker';
 import { ui } from '../ui/theme';
 
@@ -15,26 +16,27 @@ type Props = {
 };
 
 export function FreePlay({ options, onChange, onStart, onBack }: Props) {
+  const t = useStrings();
   const set = (patch: Partial<FreePlayOptions>) => onChange({ ...options, ...patch });
   const { stage, surface, wet, kicksPerTurn } = options;
   return (
     <View style={styles.wrap}>
       <View style={styles.left}>
         <Pressable onPress={onBack} hitSlop={12}>
-          <Text style={ui.link}>‹ Back</Text>
+          <Text style={ui.link}>{t.common.back}</Text>
         </Pressable>
-        <Text style={ui.heading}>Free play</Text>
-        <Text style={ui.rule}>Pick any board and play alone or pass the phone around.</Text>
+        <Text style={ui.heading}>{t.freePlay.title}</Text>
+        <Text style={ui.rule}>{t.freePlay.intro}</Text>
       </View>
       <View style={styles.right}>
-        <Picker items={STAGES} value={stage} onChange={(i) => set({ stage: i })} />
-        <Picker items={SURFACES} value={surface} onChange={(i) => set({ surface: i })} />
+        <Picker items={STAGES.map((x) => ({ icon: x.icon, name: t.stages[x.name as keyof typeof t.stages] }))} value={stage} onChange={(i) => set({ stage: i })} />
+        <Picker items={SURFACES.map((x) => ({ icon: x.icon, name: t.surfaces[x.name as keyof typeof t.surfaces] }))} value={surface} onChange={(i) => set({ surface: i })} />
         <View style={styles.optionRow}>
           <Pressable style={[ui.choice, styles.wet, wet && ui.choiceActive]} onPress={() => set({ wet: !wet })}>
-            <Text style={[ui.choiceText, styles.big, wet && ui.choiceTextActive]}>{wet ? '🌧  Rainy' : '☀️  Dry'}</Text>
+            <Text style={[ui.choiceText, styles.big, wet && ui.choiceTextActive]}>{wet ? t.freePlay.rainy : t.freePlay.dry}</Text>
           </Pressable>
           <View style={[ui.choice, styles.kpt]}>
-            <Text style={[ui.choiceText, ui.choiceTextActive]}>Kicks / turn</Text>
+            <Text style={[ui.choiceText, ui.choiceTextActive]}>{t.freePlay.kicksPerTurn}</Text>
             {[1, 2, 3].map((k) => (
               <Pressable key={k} style={[styles.kptButton, k === kicksPerTurn && ui.choiceActive]} onPress={() => set({ kicksPerTurn: k })}>
                 <Text style={[ui.choiceText, styles.big, k === kicksPerTurn && ui.choiceTextActive]}>{k}</Text>
@@ -45,7 +47,7 @@ export function FreePlay({ options, onChange, onStart, onBack }: Props) {
         <View style={styles.playGrid}>
           {[1, 2, 3, 4].map((n) => (
             <Pressable key={n} style={[ui.button, styles.playButton]} onPress={() => onStart(n)}>
-              <Text style={ui.buttonText}>{n === 1 ? 'Practice' : `${n} players`}</Text>
+              <Text style={ui.buttonText}>{n === 1 ? t.freePlay.practice : t.freePlay.players(n)}</Text>
             </Pressable>
           ))}
         </View>

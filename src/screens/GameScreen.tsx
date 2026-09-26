@@ -13,6 +13,8 @@ import { STAGES } from '../game/stages';
 import { friction, SURFACES } from '../game/surfaces';
 import { BALANCE_ENABLED, useGame } from '../game/useGame';
 import { useReplay } from '../game/useReplay';
+import { nameOf } from '../i18n';
+import { useStrings } from '../i18n/useStrings';
 import { CHALK, INK, ui } from '../ui/theme';
 
 export type MatchConfig = {
@@ -38,6 +40,7 @@ type Props = {
 
 export function GameScreen({ config, onRestart, onRematch, onExit, next, onFinished }: Props) {
   const { title, stage, surface, wet, par, playerCount, kicksPerTurn, firstPlayer } = config;
+  const t = useStrings();
   const [area, setArea] = useState({ width: 0, height: 0 });
   const { cfg, icon } = STAGES[stage];
   const ground = SURFACES[surface];
@@ -92,7 +95,7 @@ export function GameScreen({ config, onRestart, onRematch, onExit, next, onFinis
       <View style={styles.side}>
         <View style={styles.links}>
           <Pressable onPress={onExit} hitSlop={12}>
-            <Text style={ui.link}>‹ Menu</Text>
+            <Text style={ui.link}>{t.common.menu}</Text>
           </Pressable>
           <View style={styles.linkGroup}>
             <Pressable onPress={toggleMute} hitSlop={10}>
@@ -110,19 +113,19 @@ export function GameScreen({ config, onRestart, onRematch, onExit, next, onFinis
           {icon}  {title}
         </Text>
         <Text style={styles.surfaceLabel}>
-          {ground.icon} {ground.name}
-          {wet ? '  🌧 Wet' : ''}
-          {playerCount > 1 ? `  ·  Round ${watching ? r.round : g.round}` : `  ·  Par ${par}`}
+          {ground.icon} {nameOf(t.surfaces, ground.name)}
+          {wet ? `  🌧 ${t.wet}` : ''}
+          {`  ·  ${playerCount > 1 ? t.common.round(watching ? r.round : g.round) : t.common.par(par)}`}
         </Text>
 
         <View style={styles.chips}>
           {players.map((p, i) => (
             <View key={i} style={[styles.chip, i === focus && { borderColor: p.color, backgroundColor: '#00000033' }]}>
               <View style={[styles.dot, { backgroundColor: p.color }]} />
-              <Text style={[styles.chipText, i === focus && styles.chipTextActive]}>{playerCount === 1 ? 'You' : `P${i + 1}`}</Text>
+              <Text style={[styles.chipText, i === focus && styles.chipTextActive]}>{playerCount === 1 ? t.common.you : t.common.playerShort(i + 1)}</Text>
               {!watching && (
                 <Text style={[styles.chipText, styles.chipStat, i === focus && styles.chipTextActive]}>
-                  {p.finished ? '🏁' : `${Math.round(progressFraction(cfg, p.x, p.y) * 100)}%`} · {p.kicks} kick{p.kicks === 1 ? '' : 's'}
+                  {p.finished ? '🏁' : `${Math.round(progressFraction(cfg, p.x, p.y) * 100)}%`} · {t.common.kicks(p.kicks)}
                 </Text>
               )}
             </View>
@@ -138,7 +141,7 @@ export function GameScreen({ config, onRestart, onRematch, onExit, next, onFinis
         {watching && (
           <View style={styles.controls}>
             <Text style={styles.replayLabel}>
-              ▶ Replay · {r.index + 1}/{r.count}
+              {t.replay.label(r.index + 1, r.count)}
             </Text>
             <View style={styles.controlRow}>
               <Pressable style={styles.ctrl} onPress={r.togglePause}>
@@ -155,7 +158,7 @@ export function GameScreen({ config, onRestart, onRematch, onExit, next, onFinis
               </Pressable>
             </View>
             <Pressable style={[ui.button, styles.closeReplay]} onPress={() => setReplaying(false)}>
-              <Text style={[ui.buttonText, { fontSize: 15 }]}>Close replay</Text>
+              <Text style={[ui.buttonText, { fontSize: 15 }]}>{t.replay.close}</Text>
             </Pressable>
           </View>
         )}

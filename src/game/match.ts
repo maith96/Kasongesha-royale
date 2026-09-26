@@ -125,6 +125,9 @@ function endTurn(m: MatchState) {
   m.over = true; // everyone is home
 }
 
+// One line of the points breakdown; the screen turns `kind` into words.
+export type PointsLine = { kind: 'win' | 'home' | 'underPar' | 'shortcuts' | 'streaks'; count: number; points: number };
+
 export type Standing = {
   player: number;
   rank: number; // 1 = winner (ties share a rank)
@@ -135,7 +138,7 @@ export type Standing = {
   shortcuts: number;
   progress: number; // 0..1 along the track
   points: number;
-  breakdown: { label: string; points: number }[];
+  breakdown: PointsLine[];
   stars: number; // solo rating: 3 at or under par, 2 within par+3, 1 finished
 };
 
@@ -162,15 +165,15 @@ export function standings(m: MatchState, cfg: SpiralConfig, settings: MatchSetti
   return rows.map((r, idx) => {
     if (idx === 0 || !same(rows[idx - 1], r)) rank = idx + 1;
     const winner = m.over && r.finished && rank === 1;
-    const breakdown: { label: string; points: number }[] = [];
-    if (winner) breakdown.push({ label: 'Win', points: POINTS.win });
+    const breakdown: PointsLine[] = [];
+    if (winner) breakdown.push({ kind: 'win', count: 1, points: POINTS.win });
     if (r.finished) {
-      breakdown.push({ label: 'Home', points: POINTS.home });
+      breakdown.push({ kind: 'home', count: 1, points: POINTS.home });
       const under = settings.par - r.kicks;
-      if (under > 0) breakdown.push({ label: `${under} under par`, points: under * POINTS.perKickUnderPar });
+      if (under > 0) breakdown.push({ kind: 'underPar', count: under, points: under * POINTS.perKickUnderPar });
     }
-    if (r.shortcuts) breakdown.push({ label: `${r.shortcuts} shortcut${r.shortcuts > 1 ? 's' : ''}`, points: r.shortcuts * POINTS.shortcut });
-    if (r.streaksOf3) breakdown.push({ label: `${r.streaksOf3} clean streak${r.streaksOf3 > 1 ? 's' : ''}`, points: r.streaksOf3 * POINTS.streakOf3 });
+    if (r.shortcuts) breakdown.push({ kind: 'shortcuts', count: r.shortcuts, points: r.shortcuts * POINTS.shortcut });
+    if (r.streaksOf3) breakdown.push({ kind: 'streaks', count: r.streaksOf3, points: r.streaksOf3 * POINTS.streakOf3 });
     const stars = !r.finished ? 0 : r.kicks <= settings.par ? 3 : r.kicks <= settings.par + 3 ? 2 : 1;
     return {
       player: r.player,

@@ -1,42 +1,66 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Lang, LANGUAGE_CODES, LANGUAGES } from '../i18n';
+import { useStrings } from '../i18n/useStrings';
 import { GOLD, ui } from '../ui/theme';
 
-type Props = { stars: number; maxStars: number; onCampaign: () => void; onFreePlay: () => void };
+type Props = {
+  stars: number;
+  maxStars: number;
+  language: Lang;
+  onLanguage: (l: Lang) => void;
+  onCampaign: () => void;
+  onFreePlay: () => void;
+};
 
-export function Home({ stars, maxStars, onCampaign, onFreePlay }: Props) {
+export function Home({ stars, maxStars, language, onLanguage, onCampaign, onFreePlay }: Props) {
+  const t = useStrings();
   return (
-    <View style={styles.wrap}>
-      <View style={styles.left}>
-        <Text style={ui.title}>Kasongesha{'\n'}Royale</Text>
-        <View style={ui.card}>
-          <Text style={ui.rule}>🎯  Touch the board to aim</Text>
-          <Text style={ui.rule}>👟  Pull the power bar down, let go to kick</Text>
-          <Text style={ui.rule}>🪨  Never stop on a line; slide over one at most</Text>
-          <Text style={ui.rule}>🏁  First home wins. Mistake = back to start!</Text>
-        </View>
+    <View style={styles.fill}>
+      <View style={styles.languages}>
+        {LANGUAGE_CODES.map((code) => (
+          <Pressable key={code} style={[ui.choice, styles.lang, code === language && ui.choiceActive]} onPress={() => onLanguage(code)}>
+            <Text style={[ui.choiceText, styles.langText, code === language && ui.choiceTextActive]}>{LANGUAGES[code].languageName}</Text>
+          </Pressable>
+        ))}
       </View>
-      <View style={styles.right}>
-        <Pressable style={[ui.button, styles.big]} onPress={onCampaign}>
-          <Text style={ui.buttonText}>Campaign</Text>
-          <Text style={styles.sub}>
-            <Text style={{ color: GOLD }}>★</Text> {stars} / {maxStars}
-          </Text>
-        </Pressable>
-        <Pressable style={[ui.button, styles.big]} onPress={onFreePlay}>
-          <Text style={ui.buttonText}>Free play</Text>
-          <Text style={styles.sub}>Any board · 1–4 players</Text>
-        </Pressable>
+      <View style={styles.wrap}>
+        <View style={styles.left}>
+          {/* The game's name is a brand, not translated. */}
+          <Text style={ui.title}>Kasongesha{'\n'}Royale</Text>
+          <View style={ui.card}>
+            {t.home.rules.map((rule) => (
+              <Text key={rule} style={ui.rule}>
+                {rule}
+              </Text>
+            ))}
+          </View>
+        </View>
+        <View style={styles.right}>
+          <Pressable style={[ui.button, styles.big]} onPress={onCampaign}>
+            <Text style={ui.buttonText}>{t.home.campaign}</Text>
+            <Text style={styles.sub}>
+              <Text style={{ color: GOLD }}>★</Text> {stars} / {maxStars}
+            </Text>
+          </Pressable>
+          <Pressable style={[ui.button, styles.big]} onPress={onFreePlay}>
+            <Text style={ui.buttonText}>{t.home.freePlay}</Text>
+            <Text style={styles.sub}>{t.home.freePlaySub}</Text>
+          </Pressable>
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  languages: { position: 'absolute', top: 10, right: 16, flexDirection: 'row', gap: 6, zIndex: 1 },
+  lang: { paddingHorizontal: 10, paddingVertical: 4 },
+  langText: { fontSize: 13 },
   wrap: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 40 },
   left: { alignItems: 'center', gap: 16, flexShrink: 1 },
   right: { gap: 14, width: 280 },
   big: { paddingVertical: 16 },
   sub: { color: '#5b3d22', fontSize: 13, fontWeight: '700', marginTop: 2 },
 });
-

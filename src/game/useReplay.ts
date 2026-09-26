@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { strings } from '../i18n';
 import { playerName, Tone, verdictMessage } from './messages';
 import type { Replay } from './replay';
 import { isCloseCall } from './rules';
@@ -80,7 +81,7 @@ export function useReplay(replay: Replay | null, playerCount: number, cfg: Spira
     focus: s.player,
     round: s.round,
     movingStone: sliding ? s.path[frame] : null,
-    message: sliding ? `${playerName(s.player, playerCount)} · kick ${step.current + 1} of ${steps.length}` : said.message,
+    message: sliding ? strings().turn.replayKick(playerName(s.player, playerCount), step.current + 1, steps.length) : said.message,
     tone,
     index: step.current,
     count: steps.length,

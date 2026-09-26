@@ -1,6 +1,8 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import type { Standing } from '../game/match';
+import type { PointsLine, Standing } from '../game/match';
+import { Strings } from '../i18n';
+import { useStrings } from '../i18n/useStrings';
 import type { Player } from '../game/useGame';
 
 type Props = {
@@ -15,7 +17,20 @@ type Props = {
 
 const CHALK = '#fdf6e3';
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+function pointsLabel(s: Strings['results'], b: PointsLine): string {
+  switch (b.kind) {
+    case 'win':
+      return s.win;
+    case 'home':
+      return s.home;
+    case 'underPar':
+      return s.underPar(b.count);
+    case 'shortcuts':
+      return s.shortcuts(b.count);
+    case 'streaks':
+      return s.streaks(b.count);
+  }
+}
 const INK = '#2a1a0c';
 
 function Stars({ n }: { n: number }) {
@@ -28,13 +43,15 @@ function Stars({ n }: { n: number }) {
 }
 
 export function Results({ results, players, par, next, onReplay, onRematch, onMenu }: Props) {
+  const t = useStrings();
+  const s = t.results;
   const solo = results.length === 1;
   const winners = results.filter((r) => r.winner);
   const title = solo
-    ? 'Umefika! 🏆'
+    ? s.soloTitle
     : winners.length > 1
-      ? `Draw! ${winners.map((w) => players[w.player].name).join(' & ')}`
-      : `${players[winners[0]?.player ?? results[0].player].name} wins! 🏆`;
+      ? s.draw(winners.map((w) => players[w.player].name).join(' & '))
+      : s.wins(players[winners[0]?.player ?? results[0].player].name);
 
   return (
     <View style={styles.backdrop}>
@@ -44,11 +61,11 @@ export function Results({ results, players, par, next, onReplay, onRematch, onMe
           <View style={styles.soloBox}>
             <Stars n={results[0].stars} />
             <Text style={styles.soloLine}>
-              {plural(results[0].kicks, 'kick')} · par {par}
+              {t.common.kicks(results[0].kicks)} · {t.common.par(par)}
             </Text>
           </View>
         ) : (
-          <Text style={styles.sub}>Par {par}</Text>
+          <Text style={styles.sub}>{t.common.par(par)}</Text>
         )}
 
         <ScrollView style={styles.table} contentContainerStyle={{ gap: 6 }}>
@@ -61,11 +78,11 @@ export function Results({ results, players, par, next, onReplay, onRematch, onMe
                 <View style={{ flex: 1 }}>
                   <Text style={styles.name}>
                     {p.name}
-                    {r.finished ? '' : `  ·  ${Math.round(r.progress * 100)}% of the way`}
+                    {r.finished ? '' : `  ·  ${s.ofTheWay(Math.round(r.progress * 100))}`}
                   </Text>
                   <Text style={styles.breakdown}>
-                    {plural(r.kicks, 'kick')} · {plural(r.fails, 'fail')}
-                    {r.breakdown.length ? '  ·  ' + r.breakdown.map((b) => `${b.label} +${b.points}`).join(', ') : ''}
+                    {t.common.kicks(r.kicks)} · {t.common.fails(r.fails)}
+                    {r.breakdown.length ? '  ·  ' + r.breakdown.map((b) => `${pointsLabel(s, b)} +${b.points}`).join(', ') : ''}
                   </Text>
                 </View>
                 <Text style={styles.points}>{r.points}</Text>
@@ -81,13 +98,13 @@ export function Results({ results, players, par, next, onReplay, onRematch, onMe
             </Pressable>
           )}
           <Pressable style={styles.button} onPress={onRematch}>
-            <Text style={styles.buttonText}>{solo ? 'Retry ↻' : 'Rematch ↻'}</Text>
+            <Text style={styles.buttonText}>{solo ? s.retry : s.rematch}</Text>
           </Pressable>
           <Pressable style={[styles.button, styles.ghost]} onPress={onReplay}>
-            <Text style={[styles.buttonText, { color: CHALK }]}>Watch replay</Text>
+            <Text style={[styles.buttonText, { color: CHALK }]}>{s.watchReplay}</Text>
           </Pressable>
           <Pressable style={[styles.button, styles.ghost]} onPress={onMenu}>
-            <Text style={[styles.buttonText, { color: CHALK }]}>Menu</Text>
+            <Text style={[styles.buttonText, { color: CHALK }]}>{s.menu}</Text>
           </Pressable>
         </View>
       </View>

@@ -7,6 +7,9 @@ import { EMPTY_PROGRESS, LEVELS, maxStars, nextLevel, Progress, recordStars, tot
 import type { Standing } from './src/game/match';
 import { loadProgress, saveProgress } from './src/game/progressStore';
 import { STAGES } from './src/game/stages';
+import { Lang, nameOf, setLanguage, strings } from './src/i18n';
+import { loadLanguage, saveLanguage } from './src/i18n/languageStore';
+import { useStrings } from './src/i18n/useStrings';
 import { Campaign } from './src/screens/Campaign';
 import { FreePlay, FreePlayOptions } from './src/screens/FreePlay';
 import { GameScreen, MatchConfig } from './src/screens/GameScreen';
@@ -23,9 +26,10 @@ type Route =
 
 function levelConfig(index: number): MatchConfig {
   const l = LEVELS[index];
-  const label = l.bonusStars !== undefined ? `Bonus ${l.id.slice(1)}` : `Level ${l.id}`;
+  const t = strings();
+  const label = l.bonusStars !== undefined ? t.campaign.bonus(l.id.slice(1)) : t.campaign.level(l.id);
   return {
-    title: `${label} · ${l.name}`,
+    title: `${label} · ${nameOf(t.levels, l.id)}`,
     stage: l.stage,
     surface: l.surface,
     wet: l.wet,
@@ -39,7 +43,7 @@ function levelConfig(index: number): MatchConfig {
 function freeConfig(o: FreePlayOptions, playerCount: number): MatchConfig {
   const s = STAGES[o.stage];
   return {
-    title: `Stage ${o.stage + 1} · ${s.name}`,
+    title: strings().stageTitle(o.stage + 1, nameOf(strings().stages, s.name)),
     stage: o.stage,
     surface: o.surface,
     wet: o.wet,
@@ -51,13 +55,25 @@ function freeConfig(o: FreePlayOptions, playerCount: number): MatchConfig {
 }
 
 export default function App() {
+  const t = useStrings();
+  const [language, setLanguageState] = useState<Lang>('en');
   const [route, setRoute] = useState<Route>({ name: 'home' });
   const [progress, setProgress] = useState<Progress>(EMPTY_PROGRESS);
   const [free, setFree] = useState<FreePlayOptions>({ stage: 0, surface: 0, wet: false, kicksPerTurn: 1 });
 
   useEffect(() => {
     loadProgress().then(setProgress);
+    loadLanguage().then((l) => {
+      setLanguage(l);
+      setLanguageState(l);
+    });
   }, []);
+
+  const changeLanguage = (l: Lang) => {
+    setLanguage(l);
+    setLanguageState(l);
+    saveLanguage(l);
+  };
 
   const play = (config: MatchConfig, source: Source) =>
     setRoute((r) => ({ name: 'game', config, source, matchNo: (r.name === 'game' ? r.matchNo : 0) + 1 }));
@@ -81,6 +97,8 @@ export default function App() {
       <Home
         stars={totalStars(progress)}
         maxStars={maxStars()}
+        language={language}
+        onLanguage={changeLanguage}
         onCampaign={() => setRoute({ name: 'campaign' })}
         onFreePlay={() => setRoute({ name: 'free' })}
       />
@@ -107,10 +125,10 @@ export default function App() {
     let next: { label: string; onPress: () => void } | null = null;
     if (source.kind === 'level') {
       const n = nextLevel(progress, source.index);
-      if (n !== null) next = { label: 'Next level ▶', onPress: () => play(levelConfig(n), { kind: 'level', index: n }) };
+      if (n !== null) next = { label: t.results.nextLevel, onPress: () => play(levelConfig(n), { kind: 'level', index: n }) };
     } else if (config.stage + 1 < STAGES.length) {
       next = {
-        label: 'Next stage ▶',
+        label: t.results.nextStage,
         onPress: () => {
           const o = { ...free, stage: config.stage + 1 };
           setFree(o);

@@ -1,13 +1,16 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useStrings } from '../i18n/useStrings';
+
 // Shows how steady you are on one leg. The needle swings; release your swipe
 // near the middle for an accurate push. In the red zone your foot touches down.
 export function BalanceMeter({ wobble, footDownAt }: { wobble: number; footDownAt: number }) {
+  const t = useStrings();
   const red = `${((1 - footDownAt) / 2) * 100}%` as const;
   const left = `${((wobble + 1) / 2) * 100}%` as const;
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>Balance (mguu moja)</Text>
+      <Text style={styles.label}>{t.board.balance}</Text>
       <View style={styles.bar}>
         <View style={[styles.red, { left: 0, width: red }]} />
         <View style={[styles.red, { right: 0, width: red }]} />

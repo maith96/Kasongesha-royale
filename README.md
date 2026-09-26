@@ -74,6 +74,20 @@ Controls are pool-style: tap or drag on the board to aim (the dashed line
 shows direction only), then pull the power bar down and let go to kick. How
 far the stone slides is up to your judgement. 1–4 players, pass-and-play on one phone.
 
+## Languages
+
+All player-facing text lives in `src/i18n/` – nothing is hard-coded in the
+screens (a test fails if words are written straight into JSX).
+
+- `en.ts` – English (default), which also defines the shape of every language.
+- `sw.ts` – Kiswahili, with Kenyan Sheng in the commentary.
+- On first launch the phone's language is used if supported, else English;
+  players can switch on the Home screen and the choice is remembered.
+
+To add a language, copy `en.ts` to e.g. `fr.ts`, type it as `Strings`
+(TypeScript will list any missing keys), translate, and register it in
+`src/i18n/index.ts`.
+
 ## Sound and art
 
 - Sound effects are synthesised by `scripts/make_sounds.py` into `assets/sounds/`

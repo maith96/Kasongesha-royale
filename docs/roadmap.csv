@@ -83,3 +83,5 @@ D.4,D. Open decisions,Economy,Currency name: bob / shilingi / other,,To decide,O
 D.5,D. Open decisions,Royale,Royale timing: scheduled evening event vs any time,,To decide,Open
 D.6,D. Open decisions,Rules,Tie: sudden-death kick closest to HOME centre,,To decide,Proposed - confirm
 D.7,D. Open decisions,Rules,A kick may slide over at most one spiral line (stops one-kick wins from START into HOME),"Crossing 2+ lines = too far, back to start",Done,Decided and built
+4.10,4. Feel & polish,i18n,Localisation (English + Kiswahili),All UI text in src/i18n; device language detection; switch on Home; guard test against hard-coded text,Done,English default; Sheng lines in Kiswahili
+4.11,4. Feel & polish,i18n,More languages,"e.g. French, Portuguese, Spanish for other markets; store listing translations",To do,

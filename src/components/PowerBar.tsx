@@ -1,6 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
 import { PanResponder, StyleSheet, Text, View } from 'react-native';
 
+import { useStrings } from '../i18n/useStrings';
+
 type Props = {
   height: number;
   color: string;
@@ -11,6 +13,7 @@ type Props = {
 
 // Pool-style power: drag down to pull the shoe back, let go to kick.
 export function PowerBar({ height, color, enabled, onShoot, onPowerChange }: Props) {
+  const t = useStrings();
   const [power, setPowerState] = useState(0);
   const latest = useRef({ enabled, onShoot, onPowerChange, height });
   latest.current = { enabled, onShoot, onPowerChange, height };
@@ -39,7 +42,7 @@ export function PowerBar({ height, color, enabled, onShoot, onPowerChange }: Pro
 
   return (
     <View style={[styles.wrap, !enabled && styles.disabled]} {...responder.panHandlers}>
-      <Text style={styles.label}>{power > 0 ? `${Math.round(power * 100)}%` : 'POWER'}</Text>
+      <Text style={styles.label}>{power > 0 ? `${Math.round(power * 100)}%` : t.board.power}</Text>
       <View style={[styles.track, { height }]}>
         <View style={[styles.fill, { height: `${power * 100}%`, backgroundColor: color }]} />
         <View style={[styles.handle, { top: power * (height - HANDLE) }]} />

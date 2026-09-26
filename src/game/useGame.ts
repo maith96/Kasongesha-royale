@@ -3,6 +3,7 @@ import * as Haptics from 'expo-haptics';
 
 import { applyKick, currentPlayer, MatchSettings, MatchState, newMatch, Standing, standings } from './match';
 import { playSound } from '../audio/sounds';
+import { strings } from '../i18n';
 import { playerName, Tone, verdictMessage } from './messages';
 import { isCloseCall } from './rules';
 import { KickResult, quantizeKick, SIM_DT, simulateKick } from './sim';
@@ -59,10 +60,10 @@ export function useGame(
 
   const turnMessage = useCallback(() => {
     const m = match.current;
-    const who = currentPlayer(m);
-    if (playerCount === 1) return `Kick ${m.players[0].kicks + 1}`;
-    const of = settings.kicksPerTurn > 1 ? ` · kick ${m.kicksThisTurn + 1} of ${settings.kicksPerTurn}` : '';
-    return `${playerName(who, playerCount)}'s turn${of}`;
+    const t = strings().turn;
+    if (playerCount === 1) return t.solo(m.players[0].kicks + 1);
+    const of = settings.kicksPerTurn > 1 ? t.kickOf(m.kicksThisTurn + 1, settings.kicksPerTurn) : '';
+    return t.player(playerName(currentPlayer(m), playerCount)) + of;
   }, [playerCount, settings.kicksPerTurn]);
 
   const startAiming = useCallback(() => {

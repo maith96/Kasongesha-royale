@@ -4,6 +4,7 @@ import Svg, { Circle, Ellipse, G, Line, Path, Rect, Text as SvgText } from 'reac
 
 import { boardBounds, dividerEnd, dividerStart, outlinePoints, spiralPoints, SpiralConfig, startPosition } from '../game/spiral';
 import type { Surface } from '../game/surfaces';
+import { useStrings } from '../i18n/useStrings';
 import type { Effect, Player } from '../game/useGame';
 
 type Props = {
@@ -116,6 +117,7 @@ function toPath(pts: { x: number; y: number }[]): string {
 }
 
 export function Board({ cfg, surface, wet, size, players, current, movingStone, aim, power, canAim, onAim, lastLanding, effect }: Props) {
+  const t = useStrings();
   // Square view centred on the drawing (the spiral itself is lopsided).
   const view0 = useMemo(() => {
     const b = boardBounds(cfg);
@@ -171,8 +173,8 @@ export function Board({ cfg, surface, wet, size, players, current, movingStone, 
 
         {/* home */}
         <Path d={homePath} fill="#f2c14e" opacity={0.35} />
-        <SvgText y={5} fontSize={14} fontWeight="bold" fontFamily={FONT} fill={ink} textAnchor="middle">
-          HOME
+        <SvgText y={5} fontSize={Math.min(14, ((cfg.centreRadius - 8) * 2) / (t.board.home.length * 0.62))} fontWeight="bold" fontFamily={FONT} fill={ink} textAnchor="middle">
+          {t.board.home}
         </SvgText>
 
         {/* chalk: spiral and divider (stopping at home) */}
@@ -182,7 +184,7 @@ export function Board({ cfg, surface, wet, size, players, current, movingStone, 
 
         {/* start marker, in the open mouth of the spiral above the entrance */}
         <SvgText x={startX} y={-12} fontSize={13} fontWeight="bold" fontFamily={FONT} fill={ink} textAnchor="middle">
-          START ↓
+          {t.board.start}
         </SvgText>
 
         {/* chalk cross where this player's last kick stopped */}
