@@ -82,3 +82,4 @@ D.3,D. Open decisions,Backend,Login method: phone number or Google (after anonym
 D.4,D. Open decisions,Economy,Currency name: bob / shilingi / other,,To decide,Open
 D.5,D. Open decisions,Royale,Royale timing: scheduled evening event vs any time,,To decide,Open
 D.6,D. Open decisions,Rules,Tie: sudden-death kick closest to HOME centre,,To decide,Proposed - confirm
+D.7,D. Open decisions,Rules,A kick may slide over at most one spiral line (stops one-kick wins from START into HOME),"Crossing 2+ lines = too far, back to start",Done,Decided and built

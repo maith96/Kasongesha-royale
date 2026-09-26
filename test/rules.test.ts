@@ -6,13 +6,13 @@ import { lineRadius, locate, maxTheta, SpiralConfig, startPosition, touchesLine,
 import { judgePush, progressFraction, PushTracker } from '../src/game/rules';
 import { STAGES } from '../src/game/stages';
 
-// Slide in a straight line, as the physics does, and return whether a line was jumped.
+// Slide in a straight line, as the physics does, and return how many lines were crossed.
 function slide(cfg: SpiralConfig, from: { x: number; y: number }, to: { x: number; y: number }) {
   const t = new PushTracker(cfg, from.x, from.y);
   for (let i = 1; i <= 200; i++) {
     t.step(from.x + ((to.x - from.x) * i) / 200, from.y + ((to.y - from.y) * i) / 200);
   }
-  return t.crossedLine;
+  return t.linesCrossed;
 }
 
 function onLine(cfg: SpiralConfig, theta: number) {
@@ -46,12 +46,12 @@ for (const { name, cfg } of STAGES) {
     const a = at(0, 1.0);
     const b = at(0, 1.3);
     const crossed = slide(cfg, a, b);
-    assert.equal(crossed, false);
+    assert.equal(crossed, 0);
     assert.deepEqual(judgePush(cfg, a, b, crossed), { ok: true, win: false, shortcut: false });
   });
 
   test(`${name}: stopping on the spiral line fails`, () => {
-    assert.deepEqual(judgePush(cfg, at(0, 1.0), onLine(cfg, 1.3), false), { ok: false, reason: 'line' });
+    assert.deepEqual(judgePush(cfg, at(0, 1.0), onLine(cfg, 1.3), 0), { ok: false, reason: 'line' });
   });
 
   test(`${name}: stopping on the divider fails`, () => {
@@ -60,17 +60,44 @@ for (const { name, cfg } of STAGES) {
     assert.deepEqual(judgePush(cfg, a, b, slide(cfg, a, b)), { ok: false, reason: 'line' });
   });
 
-  test(`${name}: passing over lines to another ring is fine if it lands clean`, () => {
+  test(`${name}: jumping over one line to the next ring is a shortcut`, () => {
     const a = at(0, Math.PI / 2);
-    const b = at(1, (3 * Math.PI) / 2);
+    const b = at(1, Math.PI / 2);
     const crossed = slide(cfg, a, b);
-    assert.equal(crossed, true);
+    assert.equal(crossed, 1);
     assert.deepEqual(judgePush(cfg, a, b, crossed), { ok: true, win: false, shortcut: true });
   });
 
-  test(`${name}: passing over lines but landing on one fails`, () => {
+  test(`${name}: jumping over two lines is too far`, () => {
     const a = at(0, Math.PI / 2);
-    const b = onLine(cfg, Math.PI / 2 + Math.PI * 2);
+    const b = at(2, Math.PI / 2);
+    const crossed = slide(cfg, a, b);
+    assert.equal(crossed, 2);
+    assert.deepEqual(judgePush(cfg, a, b, crossed), { ok: false, reason: 'too-far' });
+  });
+
+  test(`${name}: cutting across the middle to the other half is too far`, () => {
+    const a = at(0, Math.PI / 2);
+    const b = at(0, (3 * Math.PI) / 2);
+    assert.deepEqual(judgePush(cfg, a, b, slide(cfg, a, b)), { ok: false, reason: 'too-far' });
+  });
+
+  test(`${name}: kicking from START straight into HOME is too far`, () => {
+    const a = startPosition(cfg);
+    const b = { x: 0, y: 0 };
+    assert.deepEqual(judgePush(cfg, a, b, slide(cfg, a, b)), { ok: false, reason: 'too-far' });
+  });
+
+  test(`${name}: sliding along the track round the wrap point crosses no line`, () => {
+    // Ring 1 just before angle 0 continues into ring 2 just after it.
+    const a = at(1, Math.PI * 2 - 0.35);
+    const b = at(2, 0.35);
+    assert.equal(slide(cfg, a, b), 0);
+  });
+
+  test(`${name}: jumping over one line but landing on the next fails`, () => {
+    const a = at(0, Math.PI / 2);
+    const b = onLine(cfg, Math.PI / 2 + Math.PI * 2 * 2);
     assert.deepEqual(judgePush(cfg, a, b, slide(cfg, a, b)), { ok: false, reason: 'line' });
   });
 
@@ -80,10 +107,19 @@ for (const { name, cfg } of STAGES) {
     assert.deepEqual(judgePush(cfg, a, b, slide(cfg, a, b)), { ok: false, reason: 'outside' });
   });
 
-  test(`${name}: stopping fully inside the centre wins`, () => {
+  test(`${name}: stopping fully inside the centre from the innermost ring wins`, () => {
     const a = at(cfg.rings - 1, 5.5);
     const b = { x: 5, y: -5 };
     const v = judgePush(cfg, a, b, slide(cfg, a, b));
+    assert.equal(v.ok && v.win, true);
+  });
+
+  test(`${name}: jumping one line from the second-innermost ring into HOME wins`, () => {
+    const a = at(cfg.rings - 2, Math.PI / 2);
+    const b = { x: 0, y: 3 };
+    const crossed = slide(cfg, a, b);
+    assert.equal(crossed, 1);
+    const v = judgePush(cfg, a, b, crossed);
     assert.equal(v.ok && v.win, true);
   });
 

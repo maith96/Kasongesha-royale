@@ -54,5 +54,5 @@ export function simulateKick(cfg: SpiralConfig, friction: number, from: Point, k
     }
   }
   const end = { x, y };
-  return { path, end, verdict: judgePush(cfg, from, end, tracker.crossedLine) };
+  return { path, end, verdict: judgePush(cfg, from, end, tracker.linesCrossed) };
 }

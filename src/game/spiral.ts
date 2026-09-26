@@ -106,6 +106,22 @@ export function trackPoint(cfg: SpiralConfig, ring: number, phi: number): Point 
   return polar(rn * shapeFactor(cfg, phi), phi);
 }
 
+// Unclamped ring coordinate: how many track-widths in from the outer line the
+// point is at its angle (negative outside the spiral, beyond the last ring in
+// the centre). Used to count line crossings while a stone slides.
+export function rawRing(cfg: SpiralConfig, x: number, y: number): { phi: number; ring: number } {
+  const phi = normAngle(Math.atan2(y, x));
+  const rn = Math.hypot(x, y) / shapeFactor(cfg, phi);
+  return { phi, ring: Math.floor((outerRadius(cfg) - turnOffset(cfg, phi) - rn) / cfg.pitch) };
+}
+
+// Is there a spiral line between ring j-1 and ring j at angle φ? (The line
+// ends at the centre, so the innermost "walls" don't exist everywhere.)
+export function lineExists(cfg: SpiralConfig, phi: number, j: number): boolean {
+  const theta = phi + TAU * j;
+  return j >= 0 && theta <= maxTheta(cfg);
+}
+
 export function locate(cfg: SpiralConfig, x: number, y: number): Location {
   const r = Math.hypot(x, y);
   const phi = normAngle(Math.atan2(y, x));

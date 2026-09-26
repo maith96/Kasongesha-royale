@@ -6,8 +6,10 @@ leg and push your stone along a chalk spiral to the centre.
 ## Rules
 
 - Push your stone along the spiral track towards the centre.
-- The stone may slide over lines, but must never **stop** on one (the spiral
-  or the divider). Pushing over lines towards the centre is a shortcut.
+- The stone must never **stop** on a line (the spiral or the divider).
+- A kick may slide over **at most one spiral line** – jumping to the next ring
+  is a shortcut; crossing two or more is "Umeruka sana!" and back to start.
+  (The divider doesn't count.)
 - Hopping on one leg is the **balance meter**: release your swipe near the
   middle for an accurate push. In the red zone your foot touches down.
   (Currently switched off via `BALANCE_ENABLED` in `src/game/useGame.ts`.)

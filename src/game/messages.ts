@@ -5,6 +5,7 @@ export type Tone = 'info' | 'good' | 'bad';
 const FAIL_TEXT: Record<Extract<Verdict, { ok: false }>['reason'], string> = {
   line: 'Umeguza line! Back to start.',
   outside: 'Umetoka nje! Back to start.',
+  'too-far': 'Umeruka sana! Only one line per kick. Back to start.',
   'foot-down': 'Mguu chini! You lost balance. Back to start.',
 };
 

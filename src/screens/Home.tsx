@@ -12,7 +12,7 @@ export function Home({ stars, maxStars, onCampaign, onFreePlay }: Props) {
         <View style={ui.card}>
           <Text style={ui.rule}>🎯  Touch the board to aim</Text>
           <Text style={ui.rule}>👟  Pull the power bar down, let go to kick</Text>
-          <Text style={ui.rule}>🪨  Never stop on a line (sliding over is fine)</Text>
+          <Text style={ui.rule}>🪨  Never stop on a line; slide over one at most</Text>
           <Text style={ui.rule}>🏁  First home wins. Mistake = back to start!</Text>
         </View>
       </View>
