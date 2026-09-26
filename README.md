@@ -21,6 +21,19 @@ leg and push your stone along a chalk spiral to the centre.
 
 Pick a stage in the menu; after a win, **Next stage** moves on.
 
+## Surfaces
+
+Pick the ground in the menu; it changes how far the stone slides:
+
+| Surface | Slide (vs dirt) |
+|---|---|
+| Sand | shortest, stops fast |
+| Dirt | baseline |
+| Cement | further |
+| Tile | furthest, very slippery |
+
+Switch on **Rainy** to make any surface wet: everything slides ~1.7× further.
+
 ## Playing
 
 ```bash
@@ -38,6 +51,7 @@ far the stone slides is up to your judgement. 1–4 players, pass-and-play on on
 
 - `src/game/spiral.ts` – spiral geometry for any shape (circle or polygon): which ring/half a point is in, distance to lines.
 - `src/game/stages.ts` – the stage list (shape, rings, rotation).
+- `src/game/surfaces.ts` – surfaces (friction and look) and the wet modifier.
 - `src/game/rules.ts` – judging a push (line touch, out, shortcut, win).
 - `src/game/useGame.ts` – game loop, sliding physics, balance wobble, turns.
 - `src/components/` – the board (SVG), power bar and balance meter.

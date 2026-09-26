@@ -9,11 +9,14 @@ import { Board } from './src/components/Board';
 import { PowerBar } from './src/components/PowerBar';
 import { progressFraction } from './src/game/rules';
 import { STAGES } from './src/game/stages';
+import { friction, SURFACES } from './src/game/surfaces';
 import { BALANCE_ENABLED, useGame } from './src/game/useGame';
 
 export default function App() {
   const [players, setPlayers] = useState<number | null>(null);
   const [stage, setStage] = useState(0);
+  const [surface, setSurface] = useState(0);
+  const [wet, setWet] = useState(false);
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.screen}>
@@ -21,12 +24,22 @@ export default function App() {
         <StatusBar style="light" hidden />
         <NavigationBar hidden />
         {players === null ? (
-          <Menu stage={stage} onStage={setStage} onStart={setPlayers} />
+          <Menu
+            stage={stage}
+            onStage={setStage}
+            surface={surface}
+            onSurface={setSurface}
+            wet={wet}
+            onWet={setWet}
+            onStart={setPlayers}
+          />
         ) : (
           // Keyed so a new stage or player count starts a fresh game.
           <Game
-            key={`${stage}-${players}`}
+            key={`${stage}-${surface}-${wet}-${players}`}
             stage={stage}
+            surface={surface}
+            wet={wet}
             playerCount={players}
             onNextStage={() => setStage((s) => (s + 1) % STAGES.length)}
             onExit={() => setPlayers(null)}
@@ -37,9 +50,31 @@ export default function App() {
   );
 }
 
-type MenuProps = { stage: number; onStage: (s: number) => void; onStart: (n: number) => void };
+type MenuProps = {
+  stage: number;
+  onStage: (s: number) => void;
+  surface: number;
+  onSurface: (s: number) => void;
+  wet: boolean;
+  onWet: (w: boolean) => void;
+  onStart: (n: number) => void;
+};
 
-function Menu({ stage, onStage, onStart }: MenuProps) {
+// A row of icon + label choices.
+function Picker({ items, value, onChange }: { items: { icon: string; name: string }[]; value: number; onChange: (i: number) => void }) {
+  return (
+    <View style={styles.stages}>
+      {items.map((s, i) => (
+        <Pressable key={s.name} style={[styles.stage, i === value && styles.stageActive]} onPress={() => onChange(i)}>
+          <Text style={[styles.stageIcon, i === value && styles.stageTextActive]}>{s.icon}</Text>
+          <Text style={[styles.stageName, i === value && styles.stageTextActive]}>{s.name}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+function Menu({ stage, onStage, surface, onSurface, wet, onWet, onStart }: MenuProps) {
   return (
     <View style={styles.menu}>
       <View style={styles.menuLeft}>
@@ -52,30 +87,39 @@ function Menu({ stage, onStage, onStart }: MenuProps) {
         </View>
       </View>
       <View style={styles.menuRight}>
-        <View style={styles.stages}>
-          {STAGES.map((s, i) => (
-            <Pressable key={s.name} style={[styles.stage, i === stage && styles.stageActive]} onPress={() => onStage(i)}>
-              <Text style={[styles.stageIcon, i === stage && styles.stageTextActive]}>{s.icon}</Text>
-              <Text style={[styles.stageName, i === stage && styles.stageTextActive]}>{s.name}</Text>
+        <Picker items={STAGES} value={stage} onChange={onStage} />
+        <Picker items={SURFACES} value={surface} onChange={onSurface} />
+        <Pressable style={[styles.wet, wet && styles.stageActive]} onPress={() => onWet(!wet)}>
+          <Text style={[styles.stageName, styles.wetText, wet && styles.stageTextActive]}>
+            {wet ? '🌧  Rainy: wet & slippery' : '☀️  Dry'}
+          </Text>
+        </Pressable>
+        <View style={styles.playGrid}>
+          {[1, 2, 3, 4].map((n) => (
+            <Pressable key={n} style={[styles.button, styles.playButton]} onPress={() => onStart(n)}>
+              <Text style={styles.buttonText}>{n === 1 ? 'Practice' : `${n} players`}</Text>
             </Pressable>
           ))}
         </View>
-        {[1, 2, 3, 4].map((n) => (
-          <Pressable key={n} style={styles.button} onPress={() => onStart(n)}>
-            <Text style={styles.buttonText}>{n === 1 ? 'Practice' : `${n} players`}</Text>
-          </Pressable>
-        ))}
       </View>
     </View>
   );
 }
 
-type GameProps = { stage: number; playerCount: number; onNextStage: () => void; onExit: () => void };
+type GameProps = {
+  stage: number;
+  surface: number;
+  wet: boolean;
+  playerCount: number;
+  onNextStage: () => void;
+  onExit: () => void;
+};
 
-function Game({ stage, playerCount, onNextStage, onExit }: GameProps) {
+function Game({ stage, surface, wet, playerCount, onNextStage, onExit }: GameProps) {
   const [area, setArea] = useState({ width: 0, height: 0 });
   const { cfg, name, icon } = STAGES[stage];
-  const g = useGame(playerCount, cfg);
+  const ground = SURFACES[surface];
+  const g = useGame(playerCount, cfg, friction(ground, wet));
   const me = g.players[g.current];
   const [power, setPower] = useState(0);
   useEffect(() => setPower(0), [g.current]);
@@ -95,6 +139,10 @@ function Game({ stage, playerCount, onNextStage, onExit }: GameProps) {
 
         <Text style={styles.stageLabel}>
           {icon}  Stage {stage + 1} · {name}
+        </Text>
+        <Text style={styles.surfaceLabel}>
+          {ground.icon} {ground.name}
+          {wet ? '  🌧 Wet' : ''}
         </Text>
 
         <View style={styles.chips}>
@@ -134,6 +182,8 @@ function Game({ stage, playerCount, onNextStage, onExit }: GameProps) {
         {boardSize > 0 && (
           <Board
             cfg={cfg}
+            surface={ground}
+            wet={wet}
             size={boardSize}
             players={g.players}
             current={g.current}
@@ -175,7 +225,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#7a5634' },
   menu: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 40 },
   menuLeft: { alignItems: 'center', gap: 16, flexShrink: 1 },
-  menuRight: { gap: 12 },
+  menuRight: { gap: 8, width: 300 },
   title: { fontSize: 44, fontWeight: '900', color: CHALK, textAlign: 'center' },
   rulesCard: { backgroundColor: '#00000033', borderRadius: 16, padding: 16, gap: 8 },
   rule: { color: CHALK, fontSize: 15, lineHeight: 20 },
@@ -204,6 +254,11 @@ const styles = StyleSheet.create({
   stageName: { color: CHALK, fontSize: 12, fontWeight: '700', opacity: 0.6 },
   stageTextActive: { opacity: 1 },
   stageLabel: { color: CHALK, fontSize: 14, fontWeight: '800' },
+  surfaceLabel: { color: CHALK, fontSize: 13, fontWeight: '600', marginTop: -6, opacity: 0.85 },
+  wet: { borderRadius: 12, borderWidth: 2, borderColor: '#fdf6e355', paddingVertical: 8, alignItems: 'center' },
+  wetText: { fontSize: 14 },
+  playGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, width: 300 },
+  playButton: { minWidth: 0, width: 146, paddingVertical: 10 },
   buttonText: { color: INK, fontSize: 18, fontWeight: '800' },
   game: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   side: { width: SIDE_PANEL, alignSelf: 'stretch', paddingHorizontal: 12, paddingVertical: 8, gap: 10 },

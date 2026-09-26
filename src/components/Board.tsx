@@ -1,12 +1,15 @@
 import { useMemo, useRef } from 'react';
 import { PanResponder, View } from 'react-native';
-import Svg, { Circle, G, Line, Path, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Ellipse, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 
 import { boardBounds, dividerEnd, dividerStart, outlinePoints, spiralPoints, SpiralConfig, startPosition } from '../game/spiral';
+import type { Surface } from '../game/surfaces';
 import type { Player } from '../game/useGame';
 
 type Props = {
   cfg: SpiralConfig;
+  surface: Surface;
+  wet: boolean;
   size: number;
   players: Player[];
   current: number;
@@ -17,7 +20,6 @@ type Props = {
   onAim: (angle: number) => void;
 };
 
-export const CHALK = '#fdf6e3';
 const INK = '#2a1a0c';
 const MARGIN = 8; // world units of ground around the chalk
 // The guide shows direction only; judging the distance is the skill.
@@ -36,7 +38,7 @@ function toPath(pts: { x: number; y: number }[]): string {
   return pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
 }
 
-export function Board({ cfg, size, players, current, movingStone, aim, power, canAim, onAim }: Props) {
+export function Board({ cfg, surface, wet, size, players, current, movingStone, aim, power, canAim, onAim }: Props) {
   // Square view centred on the drawing (the spiral itself is lopsided).
   const view0 = useMemo(() => {
     const b = boardBounds(cfg);
@@ -82,14 +84,17 @@ export function Board({ cfg, size, players, current, movingStone, aim, power, ca
   const stone = movingStone ?? me;
   const deg = (aim * 180) / Math.PI;
   const shoeBack = cfg.stoneRadius + SHOE_GAP + power * SHOE_PULL + SHOE_TOE;
-  const line = { stroke: CHALK, strokeWidth: 5, strokeLinecap: 'round' as const };
+  const ink = surface.line;
+  const line = { stroke: ink, strokeWidth: 5, strokeLinecap: 'round' as const };
 
   return (
     <View ref={view} style={{ width: size, height: size }} {...responder.panHandlers}>
       <Svg width={size} height={size} viewBox={`${view0.x} ${view0.y} ${view0.side} ${view0.side}`}>
+        <Ground surface={surface} wet={wet} box={view0} />
+
         {/* home */}
         <Path d={homePath} fill="#f2c14e" opacity={0.35} />
-        <SvgText y={5} fontSize={14} fontWeight="bold" fontFamily={FONT} fill={CHALK} textAnchor="middle">
+        <SvgText y={5} fontSize={14} fontWeight="bold" fontFamily={FONT} fill={ink} textAnchor="middle">
           HOME
         </SvgText>
 
@@ -99,7 +104,7 @@ export function Board({ cfg, size, players, current, movingStone, aim, power, ca
         <Line x1={dividerStart(cfg, 'right')} y1={0} x2={dividerEnd(cfg, 'right')} y2={0} {...line} />
 
         {/* start marker, in the open mouth of the spiral above the entrance */}
-        <SvgText x={startX} y={-12} fontSize={13} fontWeight="bold" fontFamily={FONT} fill={CHALK} textAnchor="middle">
+        <SvgText x={startX} y={-12} fontSize={13} fontWeight="bold" fontFamily={FONT} fill={ink} textAnchor="middle">
           START ↓
         </SvgText>
 
@@ -113,8 +118,8 @@ export function Board({ cfg, size, players, current, movingStone, aim, power, ca
         {canAim && (
           <G transform={`translate(${me.x} ${me.y}) rotate(${deg})`}>
             {/* aim guide: direction only */}
-            <Line x1={cfg.stoneRadius + 6} y1={0} x2={GUIDE_LENGTH} y2={0} stroke={CHALK} strokeWidth={3} strokeDasharray="2 9" strokeLinecap="round" opacity={0.9} />
-            <Circle cx={GUIDE_LENGTH} cy={0} r={4} fill={CHALK} opacity={0.9} />
+            <Line x1={cfg.stoneRadius + 6} y1={0} x2={GUIDE_LENGTH} y2={0} stroke={ink} strokeWidth={3} strokeDasharray="2 9" strokeLinecap="round" opacity={0.9} />
+            <Circle cx={GUIDE_LENGTH} cy={0} r={4} fill={ink} opacity={0.9} />
             {/* the shoe, toe towards the stone, pulls back with power */}
             <G transform={`translate(${-shoeBack} 0) scale(${SHOE_SCALE})`}>
               <Path d={SHOE_OUTLINE} fill="#f5f0e6" stroke={INK} strokeWidth={2.5} />
@@ -133,5 +138,67 @@ export function Board({ cfg, size, players, current, movingStone, aim, power, ca
         <Circle cx={stone.x - 3} cy={stone.y - 3} r={cfg.stoneRadius / 3} fill="#fff" opacity={0.35} />
       </Svg>
     </View>
+  );
+}
+
+type Box = { x: number; y: number; side: number };
+
+// Deterministic scatter so the texture doesn't jump between renders.
+function scatter(count: number, box: Box, seed: number) {
+  let s = seed;
+  const rnd = () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646;
+  return Array.from({ length: count }, () => ({
+    x: box.x + rnd() * box.side,
+    y: box.y + rnd() * box.side,
+    r: rnd(),
+  }));
+}
+
+const TILE = 64;
+
+// The patch of ground the spiral is drawn on, plus rain when wet.
+function Ground({ surface, wet, box }: { surface: Surface; wet: boolean; box: Box }) {
+  const specks = useMemo(() => scatter(260, box, 7), [box]);
+  const puddles = useMemo(() => scatter(7, box, 99), [box]);
+  const drops = useMemo(() => scatter(90, box, 1234), [box]);
+  const tiles = useMemo(() => {
+    const out: number[] = [];
+    for (let v = Math.ceil(box.x / TILE) * TILE; v < box.x + box.side; v += TILE) out.push(v);
+    return out;
+  }, [box]);
+  const rows = useMemo(() => {
+    const out: number[] = [];
+    for (let v = Math.ceil(box.y / TILE) * TILE; v < box.y + box.side; v += TILE) out.push(v);
+    return out;
+  }, [box]);
+  const end = { x: box.x + box.side, y: box.y + box.side };
+
+  return (
+    <G>
+      <Rect x={box.x} y={box.y} width={box.side} height={box.side} rx={16} fill={surface.ground} />
+      {surface.texture === 'speckle' &&
+        specks.map((p, i) => <Circle key={i} cx={p.x} cy={p.y} r={1 + p.r * 2.2} fill={surface.grain} opacity={0.7} />)}
+      {surface.texture === 'tiles' && (
+        <G stroke={surface.grain} strokeWidth={2}>
+          {tiles.map((x) => (
+            <Line key={`c${x}`} x1={x} y1={box.y} x2={x} y2={end.y} />
+          ))}
+          {rows.map((y) => (
+            <Line key={`r${y}`} x1={box.x} y1={y} x2={end.x} y2={y} />
+          ))}
+        </G>
+      )}
+      {wet && (
+        <G>
+          <Rect x={box.x} y={box.y} width={box.side} height={box.side} rx={16} fill="#1b2a3a" opacity={0.28} />
+          {puddles.map((p, i) => (
+            <Ellipse key={i} cx={p.x} cy={p.y} rx={26 + p.r * 30} ry={12 + p.r * 12} fill="#a9c6dd" opacity={0.25} />
+          ))}
+          {drops.map((p, i) => (
+            <Line key={i} x1={p.x} y1={p.y} x2={p.x - 5} y2={p.y + 14} stroke="#d9ecff" strokeWidth={1.5} opacity={0.45} />
+          ))}
+        </G>
+      )}
+    </G>
   );
 }

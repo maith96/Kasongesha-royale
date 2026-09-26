@@ -5,7 +5,6 @@ import { judgePush, PushTracker, Verdict } from './rules';
 import { outerRadius, SpiralConfig, startPosition } from './spiral';
 
 
-const FRICTION = 520; // world units / s²
 const MAX_SPEED = 760; // speed at full power
 // Balance meter (hopping on one leg) is switched off until it plays well.
 export const BALANCE_ENABLED = false;
@@ -42,8 +41,9 @@ function makePlayers(cfg: SpiralConfig, count: number): Player[] {
   }));
 }
 
-// The hook is remounted per stage (see App), so `cfg` is fixed for its lifetime.
-export function useGame(playerCount: number, cfg: SpiralConfig) {
+// The hook is remounted per stage/surface (see App), so `cfg` and `friction`
+// are fixed for its lifetime. Friction: world units / s², from the surface.
+export function useGame(playerCount: number, cfg: SpiralConfig, friction: number) {
   const [, setTick] = useState(0);
   const players = useRef<Player[]>(makePlayers(cfg, playerCount));
   const current = useRef(0);
@@ -121,7 +121,7 @@ export function useGame(playerCount: number, cfg: SpiralConfig) {
             s.vx = s.vy = 0;
             break;
           }
-          const decel = Math.min(FRICTION * h, speed);
+          const decel = Math.min(friction * h, speed);
           s.vx -= (s.vx / speed) * decel;
           s.vy -= (s.vy / speed) * decel;
           s.x += s.vx * h;
@@ -145,7 +145,7 @@ export function useGame(playerCount: number, cfg: SpiralConfig) {
       cancelAnimationFrame(raf);
       if (resultTimer.current) clearTimeout(resultTimer.current);
     };
-  }, [finishPush, cfg]);
+  }, [finishPush, cfg, friction]);
 
   const setAim = useCallback((angle: number) => {
     if (phase.current !== 'aim') return;
