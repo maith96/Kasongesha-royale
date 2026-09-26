@@ -13,6 +13,18 @@ leg and push your stone along a chalk spiral to the centre.
   (Currently switched off via `BALANCE_ENABLED` in `src/game/useGame.ts`.)
 - Any mistake sends your stone back to the start. First to the centre wins.
 
+## Matches
+
+- Players take turns on the same board and watch each other kick.
+- **Kicks per turn** (1–3) is set in the menu; a fail ends your turn early.
+- **First to HOME wins.** Once someone is home the round is played out so
+  everyone has had the same number of turns; if several get home, fewest
+  kicks wins, then fewest fails.
+- **Points:** win +50, reach HOME +20, +5 per kick under par, +10 per
+  shortcut, +5 per clean streak of 3 kicks.
+- **Solo:** score kicks against the stage's par for 1–3 stars.
+- Rematch rotates who goes first.
+
 ## Stages
 
 1. **Circle** – the classic round spiral.
@@ -52,9 +64,11 @@ far the stone slides is up to your judgement. 1–4 players, pass-and-play on on
 - `src/game/spiral.ts` – spiral geometry for any shape (circle or polygon): which ring/half a point is in, distance to lines.
 - `src/game/stages.ts` – the stage list (shape, rings, rotation).
 - `src/game/surfaces.ts` – surfaces (friction and look) and the wet modifier.
+- `src/game/sim.ts` – deterministic, fixed-timestep kick simulation (same result on every phone).
+- `src/game/match.ts` – match engine: turns, equal turns, winner, points, stars.
 - `src/game/rules.ts` – judging a push (line touch, out, shortcut, win).
-- `src/game/useGame.ts` – game loop, sliding physics, balance wobble, turns.
-- `src/components/` – the board (SVG), power bar and balance meter.
+- `src/game/useGame.ts` – ties the match to the screen: animates kicks, messages, pauses.
+- `src/components/` – the board (SVG), power bar, results screen and balance meter.
 
 ## Building
 

@@ -11,23 +11,23 @@ ID,Phase,Area,Task,Details,Status,Notes
 0.10,0. Prototype (already built),Multiplayer,Pass-and-play 1-4 players,One kick per turn (to be replaced by the Phase 2 turn system),Done,
 0.11,0. Prototype (already built),Quality,Unit tests for rules and surfaces,"32 tests: every rule on every stage, surface slipperiness order",Done,
 0.12,0. Prototype (already built),Controls,Balance meter (hopping on one leg),Built but switched off (BALANCE_ENABLED) until it plays well,Parked,
-1.1,1. Foundation,Physics,Fixed-timestep deterministic physics,"Same kick gives the same result on every phone; required for fairness, replays and online play",To do,
-1.2,1. Foundation,Physics,Extract pure kick simulation,"simulateKick(board, surface, start, angle, power) -> path + result, used by game, replays and server",To do,
-1.3,1. Foundation,Data,Record kick inputs,Log aim angle + power (+ result) for every kick in a match,To do,
-1.4,1. Foundation,Replay,Replay player,Play back recorded kicks exactly; skip and 2x speed,To do,
-1.5,1. Foundation,Scoring,Kick counter,Count kicks per player per round; a fail still counts as a kick,To do,
-1.6,1. Foundation,Scoring,Par per stage,"Initial par guesses per stage, tuned in playtests",To do,
-1.7,1. Foundation,Scoring,Stars (solo),"3 stars <= par, 2 stars <= par+3, 1 star = finished",To do,
-1.8,1. Foundation,UI,Results screen,"Ranking, kicks, points breakdown, stars; Rematch / Next stage / Menu",To do,
-1.9,1. Foundation,Physics,Seeded randomness,Rain effects (and balance meter if it returns) seeded per match so all players get identical conditions,To do,
-2.1,2. Turn system (pass-and-play),Rules,Kicks-per-turn setting (1-3),"Match setting; up to N kicks per turn, a fail ends the turn early",To do,
-2.2,2. Turn system (pass-and-play),Rules,First to HOME wins,Winner is the first player to stop inside HOME,To do,
-2.3,2. Turn system (pass-and-play),Rules,Equal turns rule,"When someone reaches HOME, finish the round so everyone has had the same number of turns",To do,
-2.4,2. Turn system (pass-and-play),Rules,Tiebreak,"Fewer kicks, then fewer fails, then sudden-death kick closest to HOME centre",To do,
-2.5,2. Turn system (pass-and-play),Rules,Rotate first player on rematch,Removes first-mover advantage over a series,To do,
-2.6,2. Turn system (pass-and-play),Scoring,Points system,"Win +50, reach HOME +20, +5 per kick under par, +10 per shortcut, +5 per clean streak of 3",To do,
-2.7,2. Turn system (pass-and-play),UI,Turn HUD,"""Kick 2 of 3"", per-player kicks and points in the left panel",To do,
-2.8,2. Turn system (pass-and-play),Menu,Kicks-per-turn picker in menu,1 / 2 / 3 selector for multiplayer,To do,
+1.1,1. Foundation,Physics,Fixed-timestep deterministic physics,"Same kick gives the same result on every phone; required for fairness, replays and online play",Done,
+1.2,1. Foundation,Physics,Extract pure kick simulation,"simulateKick(board, surface, start, angle, power) -> path + result, used by game, replays and server",Done,
+1.3,1. Foundation,Data,Record kick inputs,Log aim angle + power (+ result) for every kick in a match,Done,
+1.4,1. Foundation,Replay,Replay player,Play back recorded kicks exactly; skip and 2x speed,To do,Kick log + deterministic sim are in place; the playback UI is still to build
+1.5,1. Foundation,Scoring,Kick counter,Count kicks per player per round; a fail still counts as a kick,Done,
+1.6,1. Foundation,Scoring,Par per stage,"Initial par guesses per stage, tuned in playtests",Done,"First guesses: Circle 12, Square 12, Triangle 10"
+1.7,1. Foundation,Scoring,Stars (solo),"3 stars <= par, 2 stars <= par+3, 1 star = finished",Done,
+1.8,1. Foundation,UI,Results screen,"Ranking, kicks, points breakdown, stars; Rematch / Next stage / Menu",Done,
+1.9,1. Foundation,Physics,Seeded randomness,Rain effects (and balance meter if it returns) seeded per match so all players get identical conditions,Done,Rain visuals seeded; balance meter (parked) still uses Math.random
+2.1,2. Turn system (pass-and-play),Rules,Kicks-per-turn setting (1-3),"Match setting; up to N kicks per turn, a fail ends the turn early",Done,Solo always plays 1 kick per turn
+2.2,2. Turn system (pass-and-play),Rules,First to HOME wins,Winner is the first player to stop inside HOME,Done,
+2.3,2. Turn system (pass-and-play),Rules,Equal turns rule,"When someone reaches HOME, finish the round so everyone has had the same number of turns",Done,
+2.4,2. Turn system (pass-and-play),Rules,Tiebreak,"Fewer kicks, then fewer fails, then sudden-death kick closest to HOME centre",In progress,Fewer kicks then fewer fails done; sudden-death kick pending decision D.6
+2.5,2. Turn system (pass-and-play),Rules,Rotate first player on rematch,Removes first-mover advantage over a series,Done,
+2.6,2. Turn system (pass-and-play),Scoring,Points system,"Win +50, reach HOME +20, +5 per kick under par, +10 per shortcut, +5 per clean streak of 3",Done,
+2.7,2. Turn system (pass-and-play),UI,Turn HUD,"""Kick 2 of 3"", per-player kicks and points in the left panel",Done,"Live: kick X of N, round, per-player progress and kicks. Points shown on the results screen."
+2.8,2. Turn system (pass-and-play),Menu,Kicks-per-turn picker in menu,1 / 2 / 3 selector for multiplayer,Done,
 2.9,2. Turn system (pass-and-play),Balance,Tune points values,Adjust after playtesting,To do,
 3.1,3. Campaign,Levels,12-level campaign list,"1-3 Circle (Dirt, Sand, Cement); 4-6 Square (Dirt, Cement, Tile); 7-9 Triangle (Dirt, Sand, Tile); 10-12 Rainy",To do,
 3.2,3. Campaign,Progress,Unlock next level on finish,,To do,
@@ -76,7 +76,7 @@ ID,Phase,Area,Task,Details,Status,Notes
 8.5,8. Monetization & launch,Launch,Analytics + crash reporting,,To do,
 8.6,8. Monetization & launch,Launch,Privacy policy,Required by the stores,To do,
 8.7,8. Monetization & launch,Launch,Store builds and listings,EAS builds; Play Store listing; iOS TestFlight,To do,
-D.1,D. Open decisions,Multiplayer,Equal turns rule when someone reaches HOME,,To decide,Proposed - confirm
+D.1,D. Open decisions,Multiplayer,Equal turns rule when someone reaches HOME,,Done,Built as proposed
 D.2,D. Open decisions,Multiplayer,"Points table (win +50, home +20, under par +5/kick, shortcut +10, streak +5)",,To decide,Proposed - tune
 D.3,D. Open decisions,Backend,Login method: phone number or Google (after anonymous start),,To decide,Open
 D.4,D. Open decisions,Economy,Currency name: bob / shilingi / other,,To decide,Open

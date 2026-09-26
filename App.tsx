@@ -7,6 +7,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { BalanceMeter } from './src/components/BalanceMeter';
 import { Board } from './src/components/Board';
 import { PowerBar } from './src/components/PowerBar';
+import { Results } from './src/components/Results';
 import { progressFraction } from './src/game/rules';
 import { STAGES } from './src/game/stages';
 import { friction, SURFACES } from './src/game/surfaces';
@@ -17,6 +18,15 @@ export default function App() {
   const [stage, setStage] = useState(0);
   const [surface, setSurface] = useState(0);
   const [wet, setWet] = useState(false);
+  const [kicksPerTurn, setKicksPerTurn] = useState(1);
+  // Bumped to start a fresh match; firstPlayer rotates on rematch.
+  const [matchNo, setMatchNo] = useState(0);
+  const [firstPlayer, setFirstPlayer] = useState(0);
+  const startMatch = (n: number) => {
+    setFirstPlayer(0);
+    setMatchNo((k) => k + 1);
+    setPlayers(n);
+  };
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.screen}>
@@ -31,15 +41,24 @@ export default function App() {
             onSurface={setSurface}
             wet={wet}
             onWet={setWet}
-            onStart={setPlayers}
+            kicksPerTurn={kicksPerTurn}
+            onKicksPerTurn={setKicksPerTurn}
+            onStart={startMatch}
           />
         ) : (
           // Keyed so a new stage or player count starts a fresh game.
           <Game
-            key={`${stage}-${surface}-${wet}-${players}`}
+            key={`${stage}-${surface}-${wet}-${players}-${kicksPerTurn}-${matchNo}`}
             stage={stage}
             surface={surface}
             wet={wet}
+            kicksPerTurn={kicksPerTurn}
+            firstPlayer={firstPlayer}
+            onRestart={() => setMatchNo((k) => k + 1)}
+            onRematch={() => {
+              setFirstPlayer((f) => (f + 1) % players);
+              setMatchNo((k) => k + 1);
+            }}
             playerCount={players}
             onNextStage={() => setStage((s) => (s + 1) % STAGES.length)}
             onExit={() => setPlayers(null)}
@@ -57,6 +76,8 @@ type MenuProps = {
   onSurface: (s: number) => void;
   wet: boolean;
   onWet: (w: boolean) => void;
+  kicksPerTurn: number;
+  onKicksPerTurn: (k: number) => void;
   onStart: (n: number) => void;
 };
 
@@ -74,7 +95,7 @@ function Picker({ items, value, onChange }: { items: { icon: string; name: strin
   );
 }
 
-function Menu({ stage, onStage, surface, onSurface, wet, onWet, onStart }: MenuProps) {
+function Menu({ stage, onStage, surface, onSurface, wet, onWet, kicksPerTurn, onKicksPerTurn, onStart }: MenuProps) {
   return (
     <View style={styles.menu}>
       <View style={styles.menuLeft}>
@@ -89,11 +110,19 @@ function Menu({ stage, onStage, surface, onSurface, wet, onWet, onStart }: MenuP
       <View style={styles.menuRight}>
         <Picker items={STAGES} value={stage} onChange={onStage} />
         <Picker items={SURFACES} value={surface} onChange={onSurface} />
-        <Pressable style={[styles.wet, wet && styles.stageActive]} onPress={() => onWet(!wet)}>
-          <Text style={[styles.stageName, styles.wetText, wet && styles.stageTextActive]}>
-            {wet ? '🌧  Rainy: wet & slippery' : '☀️  Dry'}
-          </Text>
-        </Pressable>
+        <View style={styles.optionRow}>
+          <Pressable style={[styles.wet, wet && styles.stageActive]} onPress={() => onWet(!wet)}>
+            <Text style={[styles.stageName, styles.wetText, wet && styles.stageTextActive]}>{wet ? '🌧  Rainy' : '☀️  Dry'}</Text>
+          </Pressable>
+          <View style={styles.kpt}>
+            <Text style={[styles.stageName, styles.stageTextActive]}>Kicks / turn</Text>
+            {[1, 2, 3].map((k) => (
+              <Pressable key={k} style={[styles.kptButton, k === kicksPerTurn && styles.stageActive]} onPress={() => onKicksPerTurn(k)}>
+                <Text style={[styles.stageName, styles.wetText, k === kicksPerTurn && styles.stageTextActive]}>{k}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
         <View style={styles.playGrid}>
           {[1, 2, 3, 4].map((n) => (
             <Pressable key={n} style={[styles.button, styles.playButton]} onPress={() => onStart(n)}>
@@ -110,17 +139,23 @@ type GameProps = {
   stage: number;
   surface: number;
   wet: boolean;
+  kicksPerTurn: number;
+  firstPlayer: number;
   playerCount: number;
+  onRestart: () => void;
+  onRematch: () => void;
   onNextStage: () => void;
   onExit: () => void;
 };
 
-function Game({ stage, surface, wet, playerCount, onNextStage, onExit }: GameProps) {
+function Game(props: GameProps) {
+  const { stage, surface, wet, kicksPerTurn, firstPlayer, playerCount, onRestart, onRematch, onNextStage, onExit } = props;
   const [area, setArea] = useState({ width: 0, height: 0 });
-  const { cfg, name, icon } = STAGES[stage];
+  const { cfg, name, icon, par } = STAGES[stage];
   const ground = SURFACES[surface];
-  const g = useGame(playerCount, cfg, friction(ground, wet));
-  const me = g.players[g.current];
+  const [settings] = useState(() => ({ kicksPerTurn: playerCount === 1 ? 1 : kicksPerTurn, par }));
+  const g = useGame(playerCount, cfg, friction(ground, wet), settings, firstPlayer);
+  const me = g.players[g.focus];
   const [power, setPower] = useState(0);
   useEffect(() => setPower(0), [g.current]);
   const boardSize = Math.max(0, Math.min(area.width, area.height - BOARD_PAD * 2));
@@ -132,7 +167,7 @@ function Game({ stage, surface, wet, playerCount, onNextStage, onExit }: GamePro
           <Pressable onPress={onExit} hitSlop={12}>
             <Text style={styles.link}>‹ Menu</Text>
           </Pressable>
-          <Pressable onPress={g.restart} hitSlop={12}>
+          <Pressable onPress={onRestart} hitSlop={12}>
             <Text style={styles.link}>↻</Text>
           </Pressable>
         </View>
@@ -143,17 +178,18 @@ function Game({ stage, surface, wet, playerCount, onNextStage, onExit }: GamePro
         <Text style={styles.surfaceLabel}>
           {ground.icon} {ground.name}
           {wet ? '  🌧 Wet' : ''}
+          {playerCount > 1 ? `  ·  Round ${g.round}` : `  ·  Par ${par}`}
         </Text>
 
         <View style={styles.chips}>
           {g.players.map((p, i) => (
-            <View key={i} style={[styles.chip, i === g.current && { borderColor: p.color, backgroundColor: '#00000033' }]}>
+            <View key={i} style={[styles.chip, i === g.focus && { borderColor: p.color, backgroundColor: '#00000033' }]}>
               <View style={[styles.dot, { backgroundColor: p.color }]} />
-              <Text style={[styles.chipText, i === g.current && styles.chipTextActive]}>
+              <Text style={[styles.chipText, i === g.focus && styles.chipTextActive]}>
                 {playerCount === 1 ? 'You' : `P${i + 1}`}
               </Text>
-              <Text style={[styles.chipText, i === g.current && styles.chipTextActive]}>
-                {Math.round(progressFraction(cfg, p.x, p.y) * 100)}%
+              <Text style={[styles.chipText, styles.chipStat, i === g.focus && styles.chipTextActive]}>
+                {p.finished ? '🏁' : `${Math.round(progressFraction(cfg, p.x, p.y) * 100)}%`} · {p.kicks} kick{p.kicks === 1 ? '' : 's'}
               </Text>
             </View>
           ))}
@@ -165,16 +201,6 @@ function Game({ stage, surface, wet, playerCount, onNextStage, onExit }: GamePro
           </Text>
         </View>
 
-        {g.phase === 'won' && (
-          <>
-            <Pressable style={[styles.button, styles.smallButton]} onPress={onNextStage}>
-              <Text style={styles.buttonText}>{stage + 1 < STAGES.length ? 'Next stage ▶' : 'Back to stage 1'}</Text>
-            </Pressable>
-            <Pressable style={[styles.button, styles.smallButton, styles.ghostButton]} onPress={g.restart}>
-              <Text style={[styles.buttonText, styles.ghostText]}>Play again</Text>
-            </Pressable>
-          </>
-        )}
         {BALANCE_ENABLED && <BalanceMeter wobble={g.phase === 'aim' ? g.wobble : 0} footDownAt={g.footDownAt} />}
       </View>
 
@@ -186,7 +212,7 @@ function Game({ stage, surface, wet, playerCount, onNextStage, onExit }: GamePro
             wet={wet}
             size={boardSize}
             players={g.players}
-            current={g.current}
+            current={g.focus}
             movingStone={g.movingStone}
             aim={g.aim}
             power={power}
@@ -206,6 +232,18 @@ function Game({ stage, surface, wet, playerCount, onNextStage, onExit }: GamePro
           onPowerChange={setPower}
         />
       </View>
+
+      {g.results && (
+        <Results
+          results={g.results}
+          players={g.players}
+          par={par}
+          hasNextStage={stage + 1 < STAGES.length}
+          onRematch={onRematch}
+          onNextStage={onNextStage}
+          onMenu={onExit}
+        />
+      )}
     </View>
   );
 }
@@ -237,9 +275,6 @@ const styles = StyleSheet.create({
     minWidth: 200,
     alignItems: 'center',
   },
-  smallButton: { minWidth: 0, paddingHorizontal: 12, paddingVertical: 10 },
-  ghostButton: { backgroundColor: 'transparent', borderWidth: 2, borderColor: CHALK },
-  ghostText: { color: CHALK },
   stages: { flexDirection: 'row', gap: 8, marginBottom: 4 },
   stage: {
     flex: 1,
@@ -255,8 +290,22 @@ const styles = StyleSheet.create({
   stageTextActive: { opacity: 1 },
   stageLabel: { color: CHALK, fontSize: 14, fontWeight: '800' },
   surfaceLabel: { color: CHALK, fontSize: 13, fontWeight: '600', marginTop: -6, opacity: 0.85 },
-  wet: { borderRadius: 12, borderWidth: 2, borderColor: '#fdf6e355', paddingVertical: 8, alignItems: 'center' },
+  wet: { flex: 1, justifyContent: 'center', borderRadius: 12, borderWidth: 2, borderColor: '#fdf6e355', paddingVertical: 8, alignItems: 'center' },
   wetText: { fontSize: 14 },
+  optionRow: { flexDirection: 'row', gap: 8 },
+  kpt: {
+    flex: 1.4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 4,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#fdf6e355',
+    paddingHorizontal: 8,
+  },
+  kptButton: { width: 30, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'transparent' },
+  chipStat: { fontSize: 12 },
   playGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, width: 300 },
   playButton: { minWidth: 0, width: 146, paddingVertical: 10 },
   buttonText: { color: INK, fontSize: 18, fontWeight: '800' },
