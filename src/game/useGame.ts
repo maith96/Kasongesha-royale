@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 
 import { applyKick, currentPlayer, MatchSettings, MatchState, newMatch, Standing, standings } from './match';
+import { playSound } from '../audio/sounds';
 import { playerName, Tone, verdictMessage } from './messages';
+import { isCloseCall } from './rules';
 import { KickResult, quantizeKick, SIM_DT, simulateKick } from './sim';
 import { SpiralConfig } from './spiral';
 
@@ -16,6 +18,9 @@ const TURN_PAUSE_MS = 1600; // a bit longer when the turn passes
 export type Player = { name: string; color: string; x: number; y: number; kicks: number; finished: boolean };
 export type Phase = 'aim' | 'moving' | 'result' | 'over';
 export type { Tone };
+
+// A short visual effect where a kick stopped. `id` changes for every kick.
+export type Effect = { id: number; x: number; y: number; kind: 'dust' | 'splash' | 'fail' | 'win' };
 
 export const PLAYER_COLORS = ['#c0392b', '#1f6fb2', '#27864a', '#8e44ad'];
 
@@ -34,6 +39,7 @@ export function useGame(
   friction: number,
   settings: MatchSettings,
   firstPlayer: number,
+  wet: boolean,
 ) {
   const [, setTick] = useState(0);
   const redraw = () => setTick((t) => t + 1);
@@ -47,6 +53,9 @@ export function useGame(
   const flight = useRef<{ result: KickResult; t: number } | null>(null);
   const pending = useRef<{ kick: { angle: number; power: number }; result: KickResult } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const effect = useRef<Effect | null>(null);
+  // Where each player's last kick stopped (even a failed one), to learn power.
+  const lastLanding = useRef<({ x: number; y: number } | null)[]>(Array(playerCount).fill(null));
 
   const turnMessage = useCallback(() => {
     const m = match.current;
@@ -78,7 +87,20 @@ export function useGame(
     const { match: next, turnEnded } = applyKick(before, cfg, settings, done.kick, done.result.verdict, done.result.end);
     match.current = next;
     const v = done.result.verdict;
-    const said = verdictMessage(v, playerCount === 1 ? null : playerName(who, playerCount));
+    const end = done.result.end;
+    const close = isCloseCall(cfg, v, end);
+    const said = verdictMessage(v, playerCount === 1 ? null : playerName(who, playerCount), close, before.log.length);
+    lastLanding.current[who] = end;
+    effect.current = {
+      id: before.log.length,
+      x: end.x,
+      y: end.y,
+      kind: v.ok && v.win ? 'win' : !v.ok ? 'fail' : wet ? 'splash' : 'dust',
+    };
+    if (v.ok && v.win) playSound('win');
+    else if (!v.ok) playSound('fail');
+    else playSound(close ? 'close' : 'good', 0.7);
+    if (wet && v.ok) playSound('splash', 0.5);
     message.current = said.message;
     tone.current = said.tone;
     if (v.ok && v.win) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -88,7 +110,7 @@ export function useGame(
     if (!next.over) {
       timer.current = setTimeout(startAiming, turnEnded && playerCount > 1 ? TURN_PAUSE_MS : RESULT_PAUSE_MS);
     }
-  }, [cfg, settings, playerCount, startAiming]);
+  }, [cfg, settings, playerCount, startAiming, wet]);
 
   // Animation loop: plays the pre-computed path in real time; also wobbles the
   // balance meter when that's switched on.
@@ -146,6 +168,8 @@ export function useGame(
       message.current = '';
       tone.current = 'info';
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      playSound('kick');
+      if (result.path.length > 20) playSound(wet ? 'splash' : 'slide', Math.min(1, 0.3 + kick.power));
       redraw();
     },
     [cfg, friction],
@@ -185,6 +209,8 @@ export function useGame(
     movingStone,
     aim: aim.current,
     results,
+    effect: effect.current,
+    lastLanding: lastLanding.current[current],
     log: m.log,
     setAim,
     push,

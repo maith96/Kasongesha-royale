@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { isMuted, setMuted } from '../audio/sounds';
 import { BalanceMeter } from '../components/BalanceMeter';
 import { Board } from '../components/Board';
 import { PowerBar } from '../components/PowerBar';
@@ -42,7 +43,7 @@ export function GameScreen({ config, onRestart, onRematch, onExit, next, onFinis
   const ground = SURFACES[surface];
   const fr = friction(ground, wet);
   const [settings] = useState(() => ({ kicksPerTurn: playerCount === 1 ? 1 : kicksPerTurn, par }));
-  const g = useGame(playerCount, cfg, fr, settings, firstPlayer);
+  const g = useGame(playerCount, cfg, fr, settings, firstPlayer, wet);
   const [power, setPower] = useState(0);
   useEffect(() => setPower(0), [g.current]);
 
@@ -61,7 +62,7 @@ export function GameScreen({ config, onRestart, onRematch, onExit, next, onFinis
     () => (replaying ? buildReplay(cfg, fr, settings, playerCount, firstPlayer, g.log) : null),
     [replaying, cfg, fr, settings, playerCount, firstPlayer, g.log],
   );
-  const r = useReplay(replay, playerCount);
+  const r = useReplay(replay, playerCount, cfg);
   const watching = replaying && r !== null;
 
   const players = watching ? g.players.map((p, i) => ({ ...p, ...r.positions[i] })) : g.players;
@@ -71,6 +72,21 @@ export function GameScreen({ config, onRestart, onRematch, onExit, next, onFinis
   const tone = watching ? r.tone : g.tone;
   const boardSize = Math.max(0, Math.min(area.width, area.height - BOARD_PAD * 2));
 
+  // Shake the board on a failed kick.
+  const shake = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (g.effect?.kind !== 'fail') return;
+    Animated.sequence(
+      [10, -9, 7, -5, 3, 0].map((v) => Animated.timing(shake, { toValue: v, duration: 45, useNativeDriver: true })),
+    ).start();
+  }, [g.effect, shake]);
+
+  const [muted, setMutedState] = useState(isMuted());
+  const toggleMute = () => {
+    setMuted(!muted);
+    setMutedState(!muted);
+  };
+
   return (
     <View style={styles.game}>
       <View style={styles.side}>
@@ -78,11 +94,16 @@ export function GameScreen({ config, onRestart, onRematch, onExit, next, onFinis
           <Pressable onPress={onExit} hitSlop={12}>
             <Text style={ui.link}>‹ Menu</Text>
           </Pressable>
-          {!watching && (
-            <Pressable onPress={onRestart} hitSlop={12}>
-              <Text style={ui.link}>↻</Text>
+          <View style={styles.linkGroup}>
+            <Pressable onPress={toggleMute} hitSlop={10}>
+              <Text style={ui.link}>{muted ? '🔇' : '🔊'}</Text>
             </Pressable>
-          )}
+            {!watching && (
+              <Pressable onPress={onRestart} hitSlop={10}>
+                <Text style={ui.link}>↻</Text>
+              </Pressable>
+            )}
+          </View>
         </View>
 
         <Text style={styles.stageLabel} numberOfLines={2}>
@@ -144,6 +165,7 @@ export function GameScreen({ config, onRestart, onRematch, onExit, next, onFinis
 
       <View style={styles.boardArea} onLayout={(e) => setArea(e.nativeEvent.layout)}>
         {boardSize > 0 && (
+          <Animated.View style={{ transform: [{ translateX: shake }] }}>
           <Board
             cfg={cfg}
             surface={ground}
@@ -156,7 +178,10 @@ export function GameScreen({ config, onRestart, onRematch, onExit, next, onFinis
             power={power}
             canAim={!watching && g.phase === 'aim'}
             onAim={g.setAim}
+            lastLanding={watching ? null : g.lastLanding}
+            effect={watching ? null : g.effect}
           />
+          </Animated.View>
         )}
       </View>
 
@@ -199,6 +224,7 @@ const styles = StyleSheet.create({
   game: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   side: { width: SIDE_PANEL, alignSelf: 'stretch', paddingHorizontal: 12, paddingVertical: 8, gap: 10 },
   links: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  linkGroup: { flexDirection: 'row', gap: 14, alignItems: 'center' },
   stageLabel: { color: CHALK, fontSize: 14, fontWeight: '800' },
   surfaceLabel: { color: CHALK, fontSize: 13, fontWeight: '600', marginTop: -6, opacity: 0.85 },
   chips: { gap: 6 },

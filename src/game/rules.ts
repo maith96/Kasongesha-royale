@@ -1,4 +1,4 @@
-import { lineExists, locate, rawRing, SpiralConfig, startPosition, touchesLine } from './spiral';
+import { distanceToDivider, distanceToSpiral, lineExists, locate, rawRing, SpiralConfig, startPosition, touchesLine } from './spiral';
 
 const TAU = Math.PI * 2;
 
@@ -62,4 +62,13 @@ export function progressFraction(cfg: SpiralConfig, x: number, y: number): numbe
   const s = startPosition(cfg);
   const from = locate(cfg, s.x, s.y).progress;
   return Math.max(0, (loc.progress - from) / (TAU * cfg.rings - from));
+}
+
+// Stopped cleanly but within a whisker of a line.
+export const CLOSE_CALL_MARGIN = 5;
+
+export function isCloseCall(cfg: SpiralConfig, v: Verdict, at: { x: number; y: number }): boolean {
+  if (!v.ok || v.win) return false;
+  const gap = Math.min(distanceToSpiral(cfg, at.x, at.y), distanceToDivider(cfg, at.x, at.y)) - cfg.stoneRadius;
+  return gap < CLOSE_CALL_MARGIN;
 }

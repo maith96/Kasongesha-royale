@@ -74,6 +74,14 @@ Controls are pool-style: tap or drag on the board to aim (the dashed line
 shows direction only), then pull the power bar down and let go to kick. How
 far the stone slides is up to your judgement. 1–4 players, pass-and-play on one phone.
 
+## Sound and art
+
+- Sound effects are synthesised by `scripts/make_sounds.py` into `assets/sounds/`
+  (kick, slide, splash, good, close call, fail, win). Mute with 🔊 in the game.
+- The app icon, Android adaptive icon, splash and favicon are drawn in
+  `scripts/icon.html` and rendered to PNG with a headless browser
+  (`?v=icon`, `?v=adaptive`, `?v=splash`).
+
 ## Code
 
 - `src/game/spiral.ts` – spiral geometry for any shape (circle or polygon): which ring/half a point is in, distance to lines.
@@ -84,6 +92,7 @@ far the stone slides is up to your judgement. 1–4 players, pass-and-play on on
 - `src/game/replay.ts`, `useReplay.ts` – rebuild a match from its kick log and play it back.
 - `src/game/campaign.ts`, `progressStore.ts` – levels, unlocking, stars; saved with AsyncStorage.
 - `src/screens/` – Home, Campaign, Free play and the game screen; `App.tsx` routes between them.
+- `src/audio/sounds.ts` – plays the sound effects (expo-audio), with mute.
 - `src/game/rules.ts` – judging a push (line touch, out, shortcut, win).
 - `src/game/useGame.ts` – ties the match to the screen: animates kicks, messages, pauses.
 - `src/components/` – the board (SVG), power bar, results screen and balance meter.

@@ -35,14 +35,14 @@ ID,Phase,Area,Task,Details,Status,Notes
 3.4,3. Campaign,Progress,Save progress on the phone,"AsyncStorage: stars, unlocked levels",Done,AsyncStorage key kasongesha.progress.v1
 3.5,3. Campaign,Menu,Campaign vs Free play menu,Keep current free choice of shape/surface/weather as Free play,Done,
 3.6,3. Campaign,Balance,Tune par and friction per level,Playtest each level,To do,
-4.1,4. Feel & polish,Audio,Sounds,"Kick, slide, fail, win",To do,
-4.2,4. Feel & polish,Effects,Dust / splash where the stone stops,Splash when wet,To do,
-4.3,4. Feel & polish,Effects,Screen shake on fail,,To do,
-4.4,4. Feel & polish,Feedback,"""Close one!"" message",When the stone stops just short of a line,To do,
-4.5,4. Feel & polish,Feedback,Last-kick landing marker,Faint marker to learn power vs distance,To do,
-4.6,4. Feel & polish,Feedback,Sheng commentary lines,More variety in result messages,To do,
-4.7,4. Feel & polish,Art,Better stone and shoe art,,To do,
-4.8,4. Feel & polish,Art,App icon and splash screen,,To do,
+4.1,4. Feel & polish,Audio,Sounds,"Kick, slide, fail, win",Done,Synthesised WAVs (scripts/make_sounds.py) via expo-audio; mute toggle in game
+4.2,4. Feel & polish,Effects,Dust / splash where the stone stops,Splash when wet,Done,"Dust puff, splash rings when wet, red puff on fail, gold sparks on win"
+4.3,4. Feel & polish,Effects,Screen shake on fail,,Done,
+4.4,4. Feel & polish,Feedback,"""Close one!"" message",When the stone stops just short of a line,Done,Stopping within 5 units of a line; own sound
+4.5,4. Feel & polish,Feedback,Last-kick landing marker,Faint marker to learn power vs distance,Done,Chalk x at where your previous kick stopped
+4.6,4. Feel & polish,Feedback,Sheng commentary lines,More variety in result messages,Done,"Several lines per event, picked by kick number so replays match"
+4.7,4. Feel & polish,Art,Better stone and shoe art,,Done,Pebble-shaped stones with highlight; shoe with sole and heel tab
+4.8,4. Feel & polish,Art,App icon and splash screen,,Done,"Drawn in scripts/icon.html, rendered to assets/*.png"
 4.9,4. Feel & polish,Controls,Fix and re-enable balance meter,Optional; maybe as a hard-mode modifier,Parked,
 5.1,5. Online turn-based multiplayer,Backend,New Firebase project,Separate from Hanga,To do,
 5.2,5. Online turn-based multiplayer,Backend,Auth,"Start anonymous, upgrade to phone number or Google (decision open)",To do,

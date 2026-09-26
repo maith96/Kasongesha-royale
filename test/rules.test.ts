@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { lineRadius, locate, maxTheta, SpiralConfig, startPosition, touchesLine, trackPoint } from '../src/game/spiral';
-import { judgePush, progressFraction, PushTracker } from '../src/game/rules';
+import { isCloseCall, judgePush, progressFraction, PushTracker } from '../src/game/rules';
 import { STAGES } from '../src/game/stages';
 
 // Slide in a straight line, as the physics does, and return how many lines were crossed.
@@ -129,3 +129,16 @@ for (const { name, cfg } of STAGES) {
     assert.equal(progressFraction(cfg, 0, 0), 1);
   });
 }
+
+test('close call: stopping just clear of a line', () => {
+  const cfg = STAGES[0].cfg;
+  const OK = { ok: true as const, win: false, shortcut: false };
+  const mid = trackPoint(cfg, 0, 1.0);
+  assert.equal(isCloseCall(cfg, OK, mid), false);
+  // Move from the middle of the track towards the outer line until 2 units clear of it.
+  const r = Math.hypot(mid.x, mid.y);
+  const edge = lineRadius(cfg, 1.0) - cfg.stoneRadius - 2;
+  const near = { x: (mid.x / r) * edge, y: (mid.y / r) * edge };
+  assert.equal(touchesLine(cfg, near.x, near.y), false);
+  assert.equal(isCloseCall(cfg, OK, near), true);
+});

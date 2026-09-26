@@ -1,10 +1,10 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PanResponder, View } from 'react-native';
 import Svg, { Circle, Ellipse, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 
 import { boardBounds, dividerEnd, dividerStart, outlinePoints, spiralPoints, SpiralConfig, startPosition } from '../game/spiral';
 import type { Surface } from '../game/surfaces';
-import type { Player } from '../game/useGame';
+import type { Effect, Player } from '../game/useGame';
 
 type Props = {
   cfg: SpiralConfig;
@@ -18,6 +18,8 @@ type Props = {
   power: number;
   canAim: boolean;
   onAim: (angle: number) => void;
+  lastLanding?: { x: number; y: number } | null; // where this player's last kick stopped
+  effect?: Effect | null;
 };
 
 const INK = '#2a1a0c';
@@ -34,11 +36,86 @@ const FONT = 'Helvetica, Arial, sans-serif';
 const SHOE_OUTLINE =
   'M -24 -7 C -24 -11 -10 -12 4 -12 C 18 -12 24 -6 24 0 C 24 6 18 12 4 12 C -10 12 -24 11 -24 7 Z';
 
+// An irregular pebble outline inside radius r (collision stays a circle).
+function pebblePath(r: number, seed: number): string {
+  const pts: { x: number; y: number }[] = [];
+  const n = 9;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    const k = 0.86 + 0.14 * Math.abs(Math.sin(seed * 12.9898 + i * 78.233));
+    pts.push({ x: Math.cos(a) * r * k, y: Math.sin(a) * r * k * 0.92 });
+  }
+  // Smooth through the points with quadratic curves between midpoints.
+  const mid = (p: { x: number; y: number }, q: { x: number; y: number }) => ({ x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 });
+  let d = '';
+  for (let i = 0; i < n; i++) {
+    const p = pts[i];
+    const m1 = mid(pts[(i + n - 1) % n], p);
+    const m2 = mid(p, pts[(i + 1) % n]);
+    d += `${i ? '' : `M${m1.x.toFixed(1)} ${m1.y.toFixed(1)} `}Q${p.x.toFixed(1)} ${p.y.toFixed(1)} ${m2.x.toFixed(1)} ${m2.y.toFixed(1)} `;
+  }
+  return d + 'Z';
+}
+
+function Stone({ x, y, r, color, seed, faded }: { x: number; y: number; r: number; color: string; seed: number; faded?: boolean }) {
+  const d = useMemo(() => pebblePath(r, seed), [r, seed]);
+  return (
+    <G transform={`translate(${x} ${y})`} opacity={faded ? 0.5 : 1}>
+      {!faded && <Path d={d} fill="#000" opacity={0.3} transform="translate(2 3)" />}
+      <Path d={d} fill={color} stroke={INK} strokeWidth={faded ? 1.5 : 2.5} />
+      <Ellipse cx={-r * 0.3} cy={-r * 0.32} rx={r * 0.38} ry={r * 0.24} fill="#fff" opacity={0.3} />
+    </G>
+  );
+}
+
+// Short burst where a kick stopped: dust, splash, a red puff for a fail,
+// gold sparks for a win.
+const EFFECT_MS = 700;
+function ImpactEffect({ effect }: { effect: Effect }) {
+  const [t, setT] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    const start = performance.now();
+    const loop = (now: number) => {
+      const k = Math.min(1, (now - start) / EFFECT_MS);
+      setT(k);
+      if (k < 1) raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [effect.id]);
+  if (t >= 1) return null;
+  const fade = 1 - t;
+  const { x, y, kind } = effect;
+  if (kind === 'splash') {
+    return (
+      <G>
+        {[0, 0.25].map((lag) => {
+          const k = Math.max(0, t - lag);
+          return <Ellipse key={lag} cx={x} cy={y} rx={10 + k * 40} ry={6 + k * 24} fill="none" stroke="#d9ecff" strokeWidth={3} opacity={fade * 0.9} />;
+        })}
+      </G>
+    );
+  }
+  const color = kind === 'fail' ? '#e74c3c' : kind === 'win' ? '#f2c14e' : '#c9a46c';
+  const count = kind === 'win' ? 14 : 9;
+  const reach = kind === 'win' ? 60 : 30;
+  return (
+    <G>
+      {Array.from({ length: count }, (_, i) => {
+        const a = (i / count) * Math.PI * 2 + effect.id;
+        const d = 8 + t * reach * (0.7 + 0.3 * Math.sin(i * 3.7));
+        return <Circle key={i} cx={x + Math.cos(a) * d} cy={y + Math.sin(a) * d} r={(kind === 'win' ? 4 : 5) * (1 - t * 0.6)} fill={color} opacity={fade * 0.85} />;
+      })}
+    </G>
+  );
+}
+
 function toPath(pts: { x: number; y: number }[]): string {
   return pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
 }
 
-export function Board({ cfg, surface, wet, size, players, current, movingStone, aim, power, canAim, onAim }: Props) {
+export function Board({ cfg, surface, wet, size, players, current, movingStone, aim, power, canAim, onAim, lastLanding, effect }: Props) {
   // Square view centred on the drawing (the spiral itself is lopsided).
   const view0 = useMemo(() => {
     const b = boardBounds(cfg);
@@ -108,11 +185,17 @@ export function Board({ cfg, surface, wet, size, players, current, movingStone, 
           START ↓
         </SvgText>
 
+        {/* chalk cross where this player's last kick stopped */}
+        {canAim && lastLanding && (
+          <G transform={`translate(${lastLanding.x} ${lastLanding.y})`} stroke={ink} strokeWidth={2.5} strokeLinecap="round" opacity={0.55}>
+            <Line x1={-6} y1={-6} x2={6} y2={6} />
+            <Line x1={-6} y1={6} x2={6} y2={-6} />
+          </G>
+        )}
+
         {/* other players' stones */}
         {players.map((p, i) =>
-          i === current ? null : (
-            <Circle key={i} cx={p.x} cy={p.y} r={cfg.stoneRadius} fill={p.color} opacity={0.45} stroke={INK} strokeWidth={1.5} />
-          ),
+          i === current ? null : <Stone key={i} x={p.x} y={p.y} r={cfg.stoneRadius} color={p.color} seed={i + 1} faded />,
         )}
 
         {canAim && (
@@ -122,7 +205,11 @@ export function Board({ cfg, surface, wet, size, players, current, movingStone, 
             <Circle cx={GUIDE_LENGTH} cy={0} r={4} fill={ink} opacity={0.9} />
             {/* the shoe, toe towards the stone, pulls back with power */}
             <G transform={`translate(${-shoeBack} 0) scale(${SHOE_SCALE})`}>
+              {/* sole peeking out, then the upper */}
+              <Path d={SHOE_OUTLINE} fill="#3b2a1a" transform="translate(1 1.5) scale(1.04)" />
               <Path d={SHOE_OUTLINE} fill="#f5f0e6" stroke={INK} strokeWidth={2.5} />
+              <Path d="M 12 -8 C 20 -6 22 6 12 8" fill="none" stroke="#d8d0c0" strokeWidth={3} />
+              <Ellipse cx={-20} cy={0} rx={3} ry={6} fill={me.color} />
               <Path d="M -18 -8 C -6 -9 6 -9 14 -5" stroke={me.color} strokeWidth={4} fill="none" strokeLinecap="round" />
               <Path d="M -18 8 C -6 9 6 9 14 5" stroke={me.color} strokeWidth={4} fill="none" strokeLinecap="round" />
               {[-8, -2, 4].map((x) => (
@@ -132,10 +219,10 @@ export function Board({ cfg, surface, wet, size, players, current, movingStone, 
           </G>
         )}
 
-        {/* current stone with a shadow */}
-        <Circle cx={stone.x + 2} cy={stone.y + 3} r={cfg.stoneRadius} fill="#000" opacity={0.3} />
-        <Circle cx={stone.x} cy={stone.y} r={cfg.stoneRadius} fill={me.color} stroke={INK} strokeWidth={2.5} />
-        <Circle cx={stone.x - 3} cy={stone.y - 3} r={cfg.stoneRadius / 3} fill="#fff" opacity={0.35} />
+        {effect && <ImpactEffect key={effect.id} effect={effect} />}
+
+        {/* current stone */}
+        <Stone x={stone.x} y={stone.y} r={cfg.stoneRadius} color={me.color} seed={current + 1} />
       </Svg>
     </View>
   );

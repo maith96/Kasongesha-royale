@@ -1,0 +1,40 @@
+<!doctype html>
+<!-- App icon / splash artwork. Render to PNG with a headless browser:
+     ?v=icon (1024, full bleed), ?v=adaptive (1024, transparent, safe zone),
+     ?v=splash (1024, transparent spiral only). -->
+<html><head><style>html,body{margin:0;background:transparent}</style></head>
+<body><svg id="s" width="1024" height="1024" viewBox="-512 -512 1024 1024"></svg>
+<script>
+const v = new URLSearchParams(location.search).get('v') || 'icon';
+const s = document.getElementById('s');
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); s.appendChild(e); return e; };
+const scale = v === 'adaptive' ? 0.62 : v === 'splash' ? 0.9 : 0.86;
+if (v === 'icon') el('rect', { x: -512, y: -512, width: 1024, height: 1024, fill: '#7a5634' });
+if (v === 'icon') for (let i = 0; i < 220; i++) {
+  const a = Math.sin(i * 12.99) * 43758.5, b = Math.sin(i * 78.23) * 12345.6;
+  el('circle', { cx: (a - Math.floor(a)) * 1024 - 512, cy: (b - Math.floor(b)) * 1024 - 512, r: 3 + (i % 5), fill: '#5e3f22', opacity: 0.7 });
+}
+const g = el('g', { transform: `scale(${scale})` });
+const add = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); g.appendChild(e); return e; };
+// Spiral: 3 turns from r=450 to r=90.
+const rings = 3, outer = 450, inner = 90, pitch = (outer - inner) / rings;
+let d = '';
+for (let t = 0; t <= Math.PI * 2 * rings; t += 0.02) {
+  const r = outer - pitch * t / (Math.PI * 2);
+  d += `${d ? 'L' : 'M'}${(r * Math.cos(t)).toFixed(1)} ${(r * Math.sin(t)).toFixed(1)} `;
+}
+const chalk = { stroke: '#fdf6e3', 'stroke-width': 26, fill: 'none', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' };
+add('circle', { r: inner - 18, fill: '#f2c14e', opacity: 0.9 });
+add('path', { d, ...chalk });
+add('line', { x1: -outer + pitch / 2, y1: 0, x2: -inner, y2: 0, ...chalk });
+add('line', { x1: inner, y1: 0, x2: outer, y2: 0, ...chalk });
+if (v !== 'splash') {
+  // Red pebble on the outer ring with a shadow and highlight.
+  const a = 0.75, r = outer - pitch * a / (Math.PI * 2) - pitch / 2;
+  const x = r * Math.cos(a), y = r * Math.sin(a), R = 46;
+  add('ellipse', { cx: x + 8, cy: y + 12, rx: R, ry: R * 0.9, fill: '#000', opacity: 0.3 });
+  add('ellipse', { cx: x, cy: y, rx: R, ry: R * 0.9, fill: '#c0392b', stroke: '#2a1a0c', 'stroke-width': 9 });
+  add('ellipse', { cx: x - 14, cy: y - 14, rx: 17, ry: 11, fill: '#fff', opacity: 0.35 });
+}
+</script></body></html>

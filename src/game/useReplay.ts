@@ -2,12 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { playerName, Tone, verdictMessage } from './messages';
 import type { Replay } from './replay';
+import { isCloseCall } from './rules';
+import type { SpiralConfig } from './spiral';
 import { SIM_DT } from './sim';
 
 const AFTER_KICK_S = 0.9; // pause on each result before the next kick
 
 // Plays a rebuilt match back kick by kick.
-export function useReplay(replay: Replay | null, playerCount: number) {
+export function useReplay(replay: Replay | null, playerCount: number, cfg: SpiralConfig) {
   const [, setTick] = useState(0);
   const step = useRef(0);
   const t = useRef(0);
@@ -70,7 +72,8 @@ export function useReplay(replay: Replay | null, playerCount: number) {
   if (!s) return null;
   const frame = Math.floor(t.current / SIM_DT);
   const sliding = frame < s.path.length - 1;
-  const said = verdictMessage(s.verdict, playerCount === 1 ? null : playerName(s.player, playerCount));
+  const close = isCloseCall(cfg, s.verdict, s.path[s.path.length - 1]);
+  const said = verdictMessage(s.verdict, playerCount === 1 ? null : playerName(s.player, playerCount), close, step.current);
   const tone: Tone = sliding ? 'info' : said.tone;
   return {
     positions: sliding ? s.before : s.after,
